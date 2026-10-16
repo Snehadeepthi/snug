@@ -1,82 +1,256 @@
-# Snug: your Fit Passport (the right size, first try)
+<div align="center">
 
-**Live demo:** https://snug-5zcsxlm5za-el.a.run.app/ (evaluator guide) · app: https://snug-5zcsxlm5za-el.a.run.app/app/
+<img src="agent/web/logo.svg" width="96" alt="Snug logo">
 
-**Scan your body once, privately at home. In any store, scan the barcode on a price tag and instantly see if that size fits. Then Snug's AI agent gets you the right size.**
+# snug
 
-1. **One-time private body scan.** Three phone photos (front, side and an optional sitting photo). Google MediaPipe runs *on the phone* and turns the body outline into measurements (chest, waist, hip, inseam). Photos are wiped instantly; only numbers are kept, on the phone.
-2. **Scan the tag in store.** The phone reads the barcode and downloads that garment's size specs (fabric, fit type, stretch, measurements per size).
-3. **Instant fit diagnosis, on the phone, standing and sitting.** A 🪑 sitting check covers jeans, trousers, shirts, blazers, kurtas and dresses. It warns when a size fits standing but digs in, pulls at the buttons or rides up when you sit (measured from the sitting photo, otherwise estimated).
-   **Fit engine details:** The fit engine (rules + math, not an LLM) compares body vs garment with ease and stretch, for example: *"Size M will be about 2.0 in tight at the hip. Grab size L instead."*
-4. **Agentic AI acts on it.** The Snug agent (Gemini + Google ADK) receives only the fit verdicts, never measurements. It checks stock, finds alternatives that fit, holds a trial room and messages staff. If something goes wrong after the try-on, it recovers on its own.
-5. **18 demo stores in 8 metro cities:** Bengaluru, Mumbai, Delhi NCR, Chennai, Hyderabad, Kolkata, Pune and Ahmedabad, each with its own stock, trial rooms and nearby stores. Shoppers pick their store from a city-grouped list or tap **📍 Use my location**, which finds the nearest store on the phone; the location is never sent. Edit `data/stores.json` to add more.
-6. **Profiles for several people on one phone:** save a Fit Passport for yourself, family and friends (scan, estimate, enter manually, or from the kiosk with a name), switch with one tap, and see **Sizes for everyone** when you scan a tag. Profiles stay on the phone; the agent gets only the person's first name with the verdicts.
-5b. **Mirror Tap trial-room QR / NFC.** Scanning the room placard tells Snug your store and room, so the agent sends sizes straight there.
-6. **Store-floor Fit Kiosk** (concept option 3). A shopper scans fully clothed on a store tablet, and a QR moves the Fit Passport to their phone inside the URL fragment, which is never sent to any server. The kiosk wipes itself after 90 s.
-7. **Speak your language.** Voice input and replies in English, Hindi, Kannada, Tamil, Telugu, Marathi or Bengali, with optional read-aloud.
-8. **No-scan option.** "Tell Snug what you wear" estimates measurements from sizes you own. There's also a **tape accuracy check** for the scan.
-9. **Complete the look.** The agent suggests a matching piece that also fits and is in stock.
-10. **Insights Agent for managers.** "Which styles run small?" is answered from anonymous try-on feedback, alongside live **impact counters** (wrong-size try-ons avoided, trips saved).
-11. **Installable app (PWA)** with a live camera guide for the body scan.
-12. **Catalogue Agent.** It turns any brand's size-chart photo or PDF into validated garment data, with human review for anything suspicious.
+### The right size, first try.
 
-> Math decides your size. AI measures you on the phone and acts for you in the store.
+**Scan your body once. Scan any price tag. Know your size, and let an AI agent fetch it.**
 
-## Pages
+[![Live demo](https://img.shields.io/badge/Live%20demo-Cloud%20Run-2B2140?style=for-the-badge&logo=googlecloud&logoColor=white)](https://snug-5zcsxlm5za-el.a.run.app/)
+[![Open the app](https://img.shields.io/badge/Open%20the%20app-mobile-FF7A59?style=for-the-badge&logo=googlechrome&logoColor=white)](https://snug-5zcsxlm5za-el.a.run.app/app/)
 
-| URL | What it is |
-|---|---|
-| `/app/` | Shopper app (mobile): Fit Passport, Scan tag, Ask Snug |
-| `/app/tags.html` | Printable demo price tags with real EAN-13 barcodes |
-| `/app/staff.html` | Store staff screen: live trial-room requests + today's impact |
-| `/app/manager.html` | Store manager: impact counters, fit signals by style, Insights Agent chat |
-| `/app/kiosk.html` | Store-floor **Fit Kiosk** (concept option 3): camera scan on a store tablet/laptop, then the passport is handed to the shopper's phone by QR |
-| `/app/placards.html` | Printable "Mirror Tap" trial-room QR placards (also usable as NFC links) |
-| `/app/catalogue.html` | Catalogue Agent: upload a size chart |
-| `/dev-ui/` | ADK developer UI (debugging, backup demo) |
+![Gemini](https://img.shields.io/badge/Gemini-Vertex%20AI-4285F4?logo=googlegemini&logoColor=white)
+![Google ADK](https://img.shields.io/badge/Google%20ADK-3%20agents-34A853?logo=google&logoColor=white)
+![Cloud Run](https://img.shields.io/badge/Cloud%20Run-asia--south1-4285F4?logo=googlecloud&logoColor=white)
+![MediaPipe](https://img.shields.io/badge/MediaPipe-on--device-0097A7?logo=google&logoColor=white)
+![Firebase Auth](https://img.shields.io/badge/Firebase-Auth-FFCA28?logo=firebase&logoColor=black)
+![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-vanilla-F7DF1E?logo=javascript&logoColor=black)
 
-## What's in this repo
+*Team Snug · Hackathon 2026*
 
-```
-agent/
-├── main.py                 # one server: ADK agent API + store API + web app
-├── apps/
-│   ├── snug_agent/         # Snug agent (acts on fit verdicts) + 8 tools
-│   └── catalogue_agent/    # Catalogue Agent: size-chart image/PDF -> validated data
-├── snug_core/
-│   ├── fit_engine.py       # rules + math (server copy, used for tests and fallback)
-│   └── db.py               # data layer: local in-memory OR Firestore
-├── web/
-│   ├── js/measure.js       # MediaPipe Pose Landmarker on the phone (photos never uploaded)
-│   ├── js/measure_core.js  # silhouette -> widths/depths -> ellipse circumference
-│   ├── js/fit.js           # fit engine ON THE PHONE (identical rules to fit_engine.py)
-│   ├── js/app.js           # shopper app
-│   └── index.html, staff.html, catalogue.html, tags.html
-├── data/                   # 20 fictional garments with barcodes, stores, demo profiles
-├── scripts/                # make_catalogue.py, seed_firestore.py
-├── tests/                  # fit engine tests (pytest)
-└── Dockerfile, deploy.sh, requirements.txt, .env.example
-```
-
-## Architecture and privacy
-
-```
- PHONE (browser)                                      CLOUD RUN "snug"
- ├─ MediaPipe body scan -> measurements (local only)
- ├─ barcode scan ── GET /api/garments/by-gtin ──────> garment specs (no body data in)
- ├─ fit engine -> verdicts ("L fits; M tight at hip")
- └─ Ask Snug ── verdicts only ── /run_sse ──────────> ADK agent + Gemini
-                                                       tools -> Firestore: stock, holds, staff tasks
- STAFF SCREEN <──────────── /api/stores/{id}/tasks ── live requests from the agent
-```
-
-**Body measurements never leave the phone.** The agent sees only per-garment verdicts (best size, confidence, notes).
+</div>
 
 ---
 
-## 1. Run it on your laptop (about 10 minutes)
+## The idea in one line
 
-You need Python 3.11+, the Google Cloud CLI, and a Google Cloud project with billing and the Gemini API (`aiplatform.googleapis.com`) enabled. See the setup guide PDF, steps 2–5.
+> **Math decides your size. AI measures you on the phone and acts for you in the store.**
+
+Shoppers carry two or three sizes into the trial room because every brand sizes differently. Snug replaces the guessing with a **Fit Passport** that lives only on your phone:
+
+| | Step | Where it happens |
+|:-:|---|---|
+| 📸 | **1. Scan your body once.** Front, side and sitting photos become measurements. Photos are wiped instantly. | Your phone |
+| 🏷️ | **2. Scan the barcode on any price tag.** Snug fetches that garment's size chart. | Phone + Cloud Run |
+| ✅ | **3. Get an instant verdict.** *"Size M will be about 2.0 in tight at the hip. Grab size L instead."* Standing **and** sitting. | Your phone |
+| 🤖 | **4. The agent acts.** It checks stock, holds a trial room, messages staff, and suggests what goes with it. | Gemini on Cloud Run |
+
+---
+
+## Architecture
+
+The design has one rule: **body measurements never cross the privacy line.** The phone does the private work; the cloud only ever sees fit verdicts like *"L fits"*.
+
+```mermaid
+flowchart TB
+  subgraph PHONE["📱 Shopper's phone · private"]
+    direction LR
+    CAM["📸 Body photos<br/>front · side · sitting"] --> MP["MediaPipe Pose<br/>runs on the phone"]
+    MP --> PASS[("Fit Passports<br/>you + family<br/>stored on the phone")]
+    TAG["🏷️ Scan price tag<br/>or trial-room QR"] --> FE["📐 Fit engine<br/>ease · stretch · sitting check"]
+    PASS --> FE
+    FE --> VER["✅ Verdicts only<br/>e.g. M tight at hip, take L"]
+  end
+
+  subgraph CLOUD["☁️ Google Cloud Run"]
+    direction LR
+    API["FastAPI<br/>garments · stock · tasks"]
+    AG["🤖 Google ADK agents<br/>Shopper · Insights · Catalogue"]
+    GEM["✨ Gemini<br/>Vertex AI"]
+    DB[("Store data<br/>in-memory or Firestore")]
+    AG <--> GEM
+    AG --> DB
+    API --> DB
+  end
+
+  subgraph STORE["🏬 Store screens"]
+    direction LR
+    KIOSK["Fit Kiosk"]
+    STAFF["Staff tablet"]
+    MGR["Manager dashboard"]
+  end
+
+  TAG -- "barcode number" --> API
+  API -- "garment size chart" --> FE
+  VER == "verdicts + first name<br/>never measurements" ==> AG
+  DB -- "trial-room requests" --> STAFF
+  DB -- "fit signals + impact" --> MGR
+  KIOSK -. "passport by QR, never stored on a server" .-> PASS
+
+  classDef private fill:#FFF1EC,stroke:#FF7A59,color:#2B2140
+  classDef cloud fill:#EEF3FE,stroke:#4285F4,color:#2B2140
+  classDef store fill:#F3F0F7,stroke:#2B2140,color:#2B2140
+  class CAM,MP,PASS,TAG,FE,VER private
+  class API,AG,GEM,DB cloud
+  class KIOSK,STAFF,MGR store
+```
+
+### What happens when you tap "Get size L for me"
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor S as Shopper
+  participant P as Phone (fit.js)
+  participant A as Shopper agent (ADK)
+  participant G as Gemini
+  participant D as Store data
+  participant T as Staff tablet
+
+  S->>P: Scans tag: Maroon Velvet Kurta, size M
+  P->>P: Fit engine: M tight at hip, L fits
+  S->>A: "Get size L for me" + verdicts (no measurements)
+  A->>G: Plan the next step
+  G-->>A: call get_scanned_item, get_fit_verdicts, check_stock
+  A->>D: Is L in stock at this store?
+  D-->>A: 2 in stock
+  A-->>S: "L is here. Shall I hold a trial room?"
+  S->>A: "Yes please"
+  A->>D: reserve_trial_room → room 4
+  A->>D: notify_staff → "Bring kurta size L to room 4"
+  D-->>T: New task appears instantly
+  A-->>S: "Room 4 is yours, and L is on its way."
+```
+
+---
+
+## Tech stack
+
+<table>
+<tr><th>Layer</th><th>Technology</th><th>Language</th><th>Why</th></tr>
+<tr><td>🧍 Body measurement</td><td>Google MediaPipe Pose Landmarker (tasks-vision) with segmentation masks</td><td>JavaScript</td><td>Runs on the phone's GPU; photos never leave the device</td></tr>
+<tr><td>📐 Fit engine</td><td><code>fit.js</code> on the phone, twin <code>fit_engine.py</code> on the server</td><td>JS + Python</td><td>Deterministic rules and math decide the size, not an LLM; both copies are tested to agree</td></tr>
+<tr><td>📷 Scanning</td><td>html5-qrcode (EAN-13, UPC, QR), JsBarcode, qrcode-generator</td><td>JavaScript</td><td>Price-tag barcodes and trial-room QR codes, bundled locally</td></tr>
+<tr><td>📱 Shopper app</td><td>Plain HTML, CSS and JavaScript as an installable PWA</td><td>JavaScript</td><td>No framework, fast on any phone, works from a link</td></tr>
+<tr><td>🔐 Accounts</td><td>Firebase Authentication: phone OTP and email/password, plus guest mode</td><td>JavaScript</td><td>Stores only name and phone/email, never measurements</td></tr>
+<tr><td>🤖 Agents</td><td>Google Agent Development Kit (ADK): 3 agents with function-calling tools</td><td>Python</td><td>Multi-step planning and real actions: stock, holds, staff tasks</td></tr>
+<tr><td>✨ Model</td><td>Gemini Flash on Vertex AI, with retries and a fallback model</td><td>n/a</td><td>Fast tool use; replies in English and 6 Indian languages</td></tr>
+<tr><td>🌐 API server</td><td>FastAPI + Uvicorn, one service for agents, API and web app</td><td>Python</td><td>One deploy, one URL</td></tr>
+<tr><td>🗄️ Data</td><td>In-memory store (default) or Cloud Firestore</td><td>Python</td><td>Clean demo state on restart; Firestore for persistence</td></tr>
+<tr><td>☁️ Hosting</td><td>Cloud Run (always one warm instance), Cloud Build, Artifact Registry</td><td>n/a</td><td>HTTPS for camera access, no cold starts during evaluation</td></tr>
+</table>
+
+---
+
+## The three agents
+
+| Agent | Who uses it | Tools | What it does |
+|---|---|---|---|
+| 🛍️ **Shopper agent** `snug_agent` | Shoppers, in the app | `get_scanned_item` `search_catalogue` `get_garment_details` `get_fit_verdicts` `check_stock` `suggest_pairings` `reserve_trial_room` `notify_staff` `record_feedback` | Gets the right size in stock, holds a trial room, messages staff, finds alternatives, completes the look, recovers when something doesn't fit |
+| 📊 **Insights agent** `insights_agent` | Store managers | `get_fit_signals` `get_impact` `get_stock` | Answers *"Which styles run small?"* from anonymous try-on feedback and shows wrong-size try-ons avoided |
+| 📄 **Catalogue agent** `catalogue_agent` | Brands and buyers | `save_size_chart` | Reads a size-chart photo or PDF with Gemini; a validator catches errors and sends them to human review |
+
+---
+
+## Privacy by design
+
+| Data | Stays on the phone | Sent to the cloud |
+|---|:-:|:-:|
+| Body photos | Wiped right after measuring | ❌ never |
+| Body measurements | ✅ | ❌ never |
+| Fit verdicts (*"L fits"*) | ✅ | ✅ to the agent |
+| Profile first name | ✅ | ✅ so the agent can say *"For Mom, L fits"* |
+| Your location (nearest store) | ✅ | ❌ never |
+| Scan events | n/a | ✅ anonymous: style, sizes, verdict |
+| Kiosk passport | ✅ arrives in the QR's URL `#fragment` | ❌ never |
+
+---
+
+## Features
+
+<details open>
+<summary><b>For shoppers</b></summary>
+
+- **3-photo body scan** with a live camera guide and 5-second timer, or upload photos
+- **🪑 Sitting check** for jeans, trousers, shirts, blazers, kurtas and dresses: catches sizes that dig in, pull at the buttons or ride up when you sit
+- **No-photo options:** *"Tell Snug what you wear"* estimates from sizes you own, or type measurements in; plus a tape-measure accuracy check
+- **Several people on one phone:** passports for you, family and friends, and **Sizes for everyone** from a single tag scan
+- **Mirror Tap:** scan a trial-room QR or NFC placard and the agent sends sizes to your room
+- **Speak your language:** English, Hindi, Kannada, Tamil, Telugu, Marathi and Bengali, with voice input and read-aloud
+- **18 stores in 8 metro cities** with **📍 Use my location** to find the nearest
+- **Sign in** with phone OTP or email, or continue as a guest
+- **Installable** as an app (PWA)
+
+</details>
+
+<details>
+<summary><b>For stores</b></summary>
+
+- **Fit Kiosk:** a fully clothed scan on a store tablet; the passport moves to the shopper's phone by QR and the kiosk wipes itself after 90 seconds
+- **Staff screen:** live trial-room requests from the agent
+- **Manager dashboard:** fit signals by style, impact counters and the Insights agent
+- **Printable** demo price tags with real EAN-13 barcodes and trial-room QR placards
+- **Catalogue agent** turns any brand's size chart into validated data
+
+</details>
+
+---
+
+## Try it in 60 seconds
+
+Open the **[evaluator guide](https://snug-5zcsxlm5za-el.a.run.app/)**: it has a system-status light, a QR to open the app on your phone, and test barcodes.
+
+| Barcode | Item | What you'll see |
+|---|---|---|
+| `2026010010004` | Maroon Velvet Kurta · M | Tight at the hip, so take L; the agent holds a room and alerts staff |
+| `2026021010000` | Rigid Mom Jeans · 28 | Fits standing, digs in when sitting, so take 30 |
+| `2026022010009` | Tailored Extra-Slim Shirt · M | Use demo shopper Rohan: pulls at the buttons when sitting, so take L |
+| `2026001010006` | Ivory Chikankari Kurta · M | Say *"it's too long"*; the agent finds the Petite version |
+| `2026004010003` | Rose Gold Sequin Dress · M | Out of stock here; the agent finds a nearby store |
+
+| Page | Path |
+|---|---|
+| Shopper app | [`/app/`](https://snug-5zcsxlm5za-el.a.run.app/app/) |
+| Demo price tags | [`/app/tags.html`](https://snug-5zcsxlm5za-el.a.run.app/app/tags.html) |
+| Staff screen | [`/app/staff.html`](https://snug-5zcsxlm5za-el.a.run.app/app/staff.html) |
+| Manager dashboard | [`/app/manager.html`](https://snug-5zcsxlm5za-el.a.run.app/app/manager.html) |
+| Fit Kiosk | [`/app/kiosk.html`](https://snug-5zcsxlm5za-el.a.run.app/app/kiosk.html) |
+| Trial-room placards | [`/app/placards.html`](https://snug-5zcsxlm5za-el.a.run.app/app/placards.html) |
+| Catalogue agent | [`/app/catalogue.html`](https://snug-5zcsxlm5za-el.a.run.app/app/catalogue.html) |
+| Agent tool-call trace | [`/dev-ui/`](https://snug-5zcsxlm5za-el.a.run.app/dev-ui/) |
+
+**Test sign-in:** phone `+91 99999 00001` with OTP `123456`, or email `judge@snug.demo` / `SnugDemo#2026`. Everything also works as a guest.
+
+---
+
+## Repository map
+
+```text
+snug/
+└── agent/
+    ├── main.py                  ← one server: ADK agents + store API + web app + rate limiting
+    ├── apps/                    ← 🤖 the three ADK agents
+    │   ├── snug_agent/          ·  shopper agent (agent.py + tools.py)
+    │   ├── insights_agent/      ·  manager insights
+    │   └── catalogue_agent/     ·  size-chart reader + validator
+    ├── snug_core/               ← 🐍 shared Python core
+    │   ├── fit_engine.py        ·  rules + math (twin of fit.js)
+    │   ├── db.py                ·  in-memory or Firestore data layer
+    │   ├── insights.py          ·  fit signals + impact
+    │   └── llm.py               ·  Gemini with retries + fallback model
+    ├── web/                     ← 📱 everything that runs in the browser
+    │   ├── js/measure.js        ·  MediaPipe on the phone
+    │   ├── js/measure_core.js   ·  outline → widths and depths → circumferences
+    │   ├── js/fit.js            ·  fit engine on the phone
+    │   ├── js/app.js            ·  shopper app
+    │   ├── js/auth.js           ·  Firebase sign-in
+    │   └── *.html               ·  app, kiosk, staff, manager, tags, placards, judges
+    ├── data/                    ← 22 garments, 18 stores, demo shoppers, simulated history
+    ├── scripts/                 ← catalogue generator, Firestore seeding, MediaPipe bundling
+    ├── tests/                   ← 13 fit-engine tests (pytest)
+    └── Dockerfile · deploy.sh · requirements.txt
+```
+
+---
+
+## Run it yourself
+
+### On your laptop
+
+You need Python 3.11+, the Google Cloud CLI, and a Google Cloud project with billing and the Vertex AI API enabled.
 
 ```bash
 cd agent
@@ -86,36 +260,19 @@ pip install -r requirements.txt
 gcloud auth application-default login
 gcloud auth application-default set-quota-project YOUR_PROJECT_ID
 
-cp .env.example .env      # then edit: GOOGLE_CLOUD_PROJECT and SNUG_MODEL (copy the Flash model ID from Model Garden)
-python main.py
+cp .env.example .env      # set GOOGLE_CLOUD_PROJECT and SNUG_MODEL
+python main.py            # then open http://localhost:8080/app/
 ```
 
-Open **http://localhost:8080/app/** (shopper app), `/app/tags.html` (demo tags) and `/app/staff.html` (staff screen). `/dev-ui/` shows every tool call. Camera and barcode scanning need HTTPS or localhost; Cloud Shell Web Preview and Cloud Run are both HTTPS.
+Run the tests with `pip install pytest && pytest -q`.
 
-`SNUG_BACKEND=local` (the default) keeps all data in memory, with no database setup. Restarting resets holds and tasks, which is handy for demos.
-
-Run the fit engine tests:
-
-```bash
-pip install pytest && pytest -q
-```
-
-## 2. Use Firestore (optional, recommended for the final demo)
-
-```bash
-gcloud services enable firestore.googleapis.com
-gcloud firestore databases create --location=asia-south1
-python scripts/seed_firestore.py --project YOUR_PROJECT_ID
-# in .env:  SNUG_BACKEND=firestore
-```
-
-## 3. Deploy to Cloud Run
+### Deploy to Cloud Run
 
 One-time setup:
 
 ```bash
 PROJECT=YOUR_PROJECT_ID
-gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com aiplatform.googleapis.com firestore.googleapis.com
+gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com aiplatform.googleapis.com
 gcloud iam service-accounts create snug-agent-sa --display-name="Snug agent" --project $PROJECT
 for ROLE in roles/aiplatform.user roles/datastore.user roles/logging.logWriter; do
   gcloud projects add-iam-policy-binding $PROJECT \
@@ -123,114 +280,80 @@ for ROLE in roles/aiplatform.user roles/datastore.user roles/logging.logWriter; 
 done
 ```
 
-Deploy (from `agent/`):
+Deploy from `agent/`:
 
 ```bash
-./deploy.sh $PROJECT YOUR_FLASH_MODEL_ID              # defaults: asia-south1, firestore backend
-# or, without Firestore:  ./deploy.sh $PROJECT YOUR_FLASH_MODEL_ID asia-south1 local
+bash deploy.sh PROJECT_ID MODEL_ID [REGION] [BACKEND] [FALLBACK_MODEL_ID]
+# example:
+bash deploy.sh snug-hack-2026 gemini-3.8-flash asia-south1 local gemini-3.5-flash
 ```
 
-The script prints your live URL (`https://snug-xxxx.a.run.app/app/`).
+The script bundles MediaPipe, deploys with one always-warm instance, and prints the live URL.
 
-`--max-instances 1` is intentional: ADK sessions live in memory, so one instance keeps conversations consistent. Before judging, run:
+<details>
+<summary><b>Optional: Firestore</b></summary>
 
 ```bash
-gcloud run services update snug --region asia-south1 --min-instances 1
+gcloud services enable firestore.googleapis.com
+gcloud firestore databases create --location=asia-south1
+python scripts/seed_firestore.py --project YOUR_PROJECT_ID
+# then deploy with BACKEND=firestore
 ```
 
-This avoids cold starts. Set it back to 0 afterwards.
+</details>
 
----
+<details>
+<summary><b>Optional: sign in / sign up with Firebase</b></summary>
 
-## 4. Customise
+Without `web/firebase-config.json` the app runs in guest mode.
 
-| Want to change | Edit |
+1. In the [Firebase console](https://console.firebase.google.com), add Firebase to your Google Cloud project.
+2. Register a web app and copy its `firebaseConfig` into `agent/web/firebase-config.json` (template: `firebase-config.example.json`). This config is public by design.
+3. Under **Authentication → Sign-in method**, enable **Email/Password** and **Phone**. Add the test number `+91 9999900001` with code `123456`.
+4. Under **Authentication → Settings → Authorized domains**, add your `run.app` host.
+5. Redeploy.
+
+</details>
+
+<details>
+<summary><b>Customise</b></summary>
+
+| Change | Edit |
 |---|---|
-| Garments, prices, stock | `scripts/make_catalogue.py` then `python scripts/make_catalogue.py` (and re-seed Firestore) |
+| Garments, prices, stock | `scripts/make_catalogue.py`, then run it |
+| Stores and trial rooms | `data/stores.json`, then run `scripts/make_catalogue.py` |
 | Demo shoppers | `data/demo_profiles.json` |
-| Stores and trial rooms | `data/stores.json` |
 | Agent behaviour and tone | `INSTRUCTION` in `apps/snug_agent/agent.py` |
-| Fit rules (ease, tolerances) | `snug_core/fit_engine.py` (run `pytest` after) |
-| Look and feel | `web/styles.css`, `web/index.html` |
+| Fit rules | `snug_core/fit_engine.py` and `web/js/fit.js` (keep them identical), then `pytest` |
+| Look and feel | `web/styles.css` |
+
+</details>
 
 ---
 
-## 5. Demo script (3 minutes)
-
-Setup: phone with `/app/`, laptop showing `/app/tags.html` and `/app/staff.html` side by side.
-
-1. **Problem (20 s):** shoppers carry 2–3 sizes into the trial room, and size problems drive returns. Trial-room sensors are expensive and invasive.
-2. **Fit Passport (30 s):** show the 2-photo scan (or tap *Demo: Ananya*). "Measured on the phone with MediaPipe, photos wiped, numbers stay on the phone."
-3. **Scan the tag (30 s):** scan *Maroon Velvet Kurta, size M* on the tag sheet. The verdict reads: *"Size M will be about 2.0 in tight at the hip. Grab size L instead."* Show the fit bars and the size strip.
-4. **Agent acts (60 s):** tap **Get size L for me**. Live steps appear: reading your scan, checking fit on your phone, checking stock (L: 2 here). Say "yes, hold it": a room is held and the **staff screen lights up**.
-5. **Recovery (20 s):** scan the *Ivory Chikankari Kurta*, then say "it's too long on me". The agent finds the Petite variant that fits and is in stock.
-6. **Catalogue Agent (20 s):** upload `sample_size_chart_with_error.png`. Gemini reads it and the validator catches the typo, so it goes to human review.
-
-**Optional extras for the demo:**
-
-- Open the app by scanning a **Room 4 placard** from `/app/placards.html`. The chip shows "Room 4" and the agent sends sizes there.
-- Switch the language to **Hindi** and use the 🎤 mic, then tap **Complete the look**.
-- On `/app/manager.html`, ask *"Which styles run small, and what should I restock?"* and point at the impact counters.
-
-## 6. What's real vs demo (say this in the pitch)
-
-- **Real:** on-device MediaPipe body measurement, barcode scanning, the on-device fit engine with ease and stretch, the Gemini agent with ADK and multi-step tool use, stock checks, trial-room holds, live staff tasks, size-chart extraction and validation, and Cloud Run/Firestore deployment.
-- **Demo:** fictional brands and catalogue (barcodes use the in-store-only EAN prefix 20–29), demo shopper profiles, and a web staff screen. Body-scan accuracy is not yet calibrated against tape measurements; that's the first roadmap step.
-- **Roadmap:** calibration study (100+ volunteers), retailer data partnerships, NFC "Mirror Tap" placards, a fit-tuning agent learning from try-on feedback, a retailer insights agent, and native apps.
-
-## 7. Troubleshooting
-
-| Problem | Fix |
-|---|---|
-| `404 model not found` | Set `SNUG_MODEL` to an exact ID from Model Garden; keep `GOOGLE_CLOUD_LOCATION=global` |
-| `429 resource exhausted` | Wait a minute; use the global location; avoid rapid repeated demos |
-| `Permission denied` on Gemini | Run `gcloud auth application-default login` again; check the project in `.env` |
-| Cloud Run build permission error | Open the build log link; grant the missing role it names to the build service account |
-| Agent forgets the chat | Sessions reset on redeploy or restart: click **New chat** |
-| Staff screen empty | Make sure the store selected in the shopper panel is the same one |
-
-Built for the hackathon by **Team Snug**.
-
-## 7b. Sign in / sign up (Firebase Authentication)
-
-The app has a **sign in / sign up** screen with **phone number (SMS OTP)** and **email + password**, plus **Continue as guest**. Evaluator links (`?demo=…`, room QR, kiosk QR) skip it automatically. The account stores only name and phone/email; measurements stay on the phone. Without `web/firebase-config.json`, the app runs in guest mode.
-
-Setup (about 15 minutes):
-
-1. In the [Firebase console](https://console.firebase.google.com), click **Add project** and choose your existing Google Cloud project `snug-hack-2026`.
-2. Go to **Project settings → Your apps → Web (`</>`)** and register "Snug web". Copy the `firebaseConfig` values into `agent/web/firebase-config.json` (template: `firebase-config.example.json`).
-3. Go to **Build → Authentication → Get started → Sign-in method** and enable **Email/Password** and **Phone**.
-   - Phone sign-in needs billing enabled on the project (pay-as-you-go). Real SMS are charged after any free allowance; check current Firebase pricing.
-   - Under **Phone → Phone numbers for testing**, add `+91 9999900001` with code `123456`. This test number never sends an SMS, so evaluators can use it.
-4. Go to **Authentication → Settings → Authorized domains** and add your Cloud Run host, e.g. `snug-xxxx-el.a.run.app`.
-5. Create the test email account: in the app, go to **Email → Create account** with `judge@snug.demo` / `SnugDemo#2026`, or use **Authentication → Users → Add user**.
-6. Redeploy with `deploy.sh`. The evaluator guide already lists these test credentials.
-
-## 8. Keeping the prototype live during evaluation
-
-**Submit this link:** `https://<your-service>.run.app/` opens the **evaluator guide** (`/app/judges.html`), which has a system-status light, demo steps and test barcodes.
-
-Built-in reliability:
+## Built to stay up
 
 | Risk | Protection |
 |---|---|
-| Cold starts / instance shut down | `--min-instances 1` (always one warm instance) |
-| Conversation lost after a restart | The app creates a new session and retries automatically |
-| Gemini busy (429) or temporarily down (5xx) | 4 automatic retries with backoff, then `SNUG_MODEL_FALLBACK`, then a friendly message |
-| CDN outage for the body-scan model | `deploy.sh` bundles MediaPipe and the pose model into the container |
-| Barcode/QR libraries | Bundled in `web/vendor/` (no CDN needed) |
-| Bots or spam running up AI costs | Per-IP limit on AI calls (`SNUG_AI_PER_MIN`, default 20/min) plus a billing budget alert |
-| Demo data getting messy | Local mode resets to a clean demo state on restart |
+| Cold starts | `--min-instances 1`: one instance always warm |
+| Server restart loses a chat | The app creates a new session and retries automatically |
+| Gemini busy (429) or down (5xx) | 4 retries with backoff, then a fallback model, then a polite message |
+| CDN outage | MediaPipe, the pose model and all scanner libraries are served from the container |
+| Bots running up AI costs | Per-IP limit on AI calls (default 20 per minute) |
+| A bad deploy | Instant rollback: `gcloud run services update-traffic snug --region asia-south1 --to-revisions=PREVIOUS_REVISION=100` |
 
-Runbook:
+---
 
-1. **Freeze** after your final deploy. Do not redeploy during evaluation unless something is broken.
-2. **Check daily:** open `/api/status` and run one chat. Look at Cloud Run → snug → Logs for errors.
-3. **Uptime alert (5 min, free):** Cloud console → Monitoring → Uptime checks → Create. Protocol HTTPS, host = your run.app host, path `/api/status`, check every 5 minutes, with an email alert to both teammates.
-4. **If a deploy breaks something, roll back instantly:**
-   ```bash
-   gcloud run revisions list --service snug --region asia-south1
-   gcloud run services update-traffic snug --region asia-south1 --to-revisions=PREVIOUS_REVISION=100
-   ```
-5. **Billing:** keep the project and billing account active until results are announced. Free trial credits last 90 days. Don't delete the project and don't stop `min-instances` until evaluation ends.
-6. **Test a new version safely:** `gcloud run deploy ... --no-traffic --tag test` gives you a separate test URL, then move traffic only after it works.
+## Real vs demo
+
+- **Real:** on-device MediaPipe measurement, barcode and QR scanning, the fit engine with sitting check, three Gemini agents with live tool use, stock checks, trial-room holds, live staff tasks, size-chart extraction and validation, Firebase sign-in, and the Cloud Run deployment.
+- **Demo data:** fictional brands, catalogue and stores (barcodes use the in-store-only EAN prefix 20–29), demo shoppers, and simulated past feedback in the manager view, labelled in the app.
+- **Next:** calibrate scan accuracy against tape measurements with 100+ volunteers, partner with retailers for real catalogues, and add native apps with NFC.
+
+<div align="center">
+
+---
+
+**snug** · made with care by **Team Snug**
+
+</div>
