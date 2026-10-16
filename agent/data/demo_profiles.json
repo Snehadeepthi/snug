@@ -1,0 +1,24 @@
+{
+ "ananya": {
+  "name": "Ananya",
+  "gender": "women",
+  "height": 162,
+  "chest": 88,
+  "waist": 72,
+  "hip": 96,
+  "inseam": 74,
+  "seated_waist": 75.5,
+  "seated_hip": 100
+ },
+ "rohan": {
+  "name": "Rohan",
+  "gender": "men",
+  "height": 176,
+  "chest": 98,
+  "waist": 84,
+  "hip": 98,
+  "inseam": 80,
+  "seated_waist": 88,
+  "seated_hip": 102
+ }
+}

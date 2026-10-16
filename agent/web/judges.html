@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Snug: evaluator guide</title><link rel="icon" href="logo.svg">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>.stepj{display:flex;gap:12px;align-items:flex-start;margin:10px 0}.stepj>span{flex:0 0 30px;height:30px;border-radius:50%;background:var(--coral);color:#fff;display:grid;place-items:center;font-weight:700}
+  .ok-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#bbb;margin-right:6px}.ok-dot.on{background:var(--ok)}.ok-dot.off{background:var(--bad)}
+  code.k{font-size:15px;background:var(--cream);padding:2px 6px;border-radius:6px}</style>
+</head>
+<body>
+<div class="page" style="max-width:900px">
+  <div class="pagebar"><a class="brand" href="./"><img src="logo.svg" alt="" width="34"><b>snug</b>&nbsp;<span class="muted">evaluator guide</span></a>
+    <span class="small"><span id="dot" class="ok-dot"></span><span id="st">Checking system…</span></span></div>
+
+  <div class="passport"><div class="pt">Snug · Fit Passport</div><div class="pn">Evaluate Snug in 3 minutes</div>
+    <div class="lock">Scan your body once at home → scan any price tag in store → instant fit verdict on your phone → Snug's AI agent gets you the right size.</div></div>
+
+  <div class="grid2" style="grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px;align-items:start">
+  <div class="panel">
+    <h2>Quick path (works on a laptop alone)</h2>
+    <div class="stepj"><span>1</span><div><a class="btn primary" id="openApp" href="./?demo=ananya&store=BLR-07&room=4" target="_blank" style="width:auto;display:inline-block;margin:0">Open the shopper app (demo shopper, Room 4)</a>
+      <div class="small muted">Loads a demo Fit Passport so you can skip the body scan. Best viewed on a phone, or narrow the browser window.</div></div></div>
+    <div class="stepj"><span>2</span><div><b>Scan tag</b> tab → type <code class="k">2026010010004</code> → <b>Check</b><br><span class="small muted">Maroon Velvet Kurta, size M. Expected: “Size M will be about 2.0 in tight at the hip. Grab size L instead.” This is computed on the device.</span></div></div>
+    <div class="stepj"><span>3</span><div>Tap <b>Get size L for me</b>, then reply <b>“yes”</b><br><span class="small muted">Watch the live agent steps (reading scan → checking fit → checking stock → holding room → messaging staff).</span></div></div>
+    <div class="stepj"><span>4</span><div>Open the <a href="staff.html" target="_blank"><b>staff screen</b></a>: the request for Room 4 appears live.</div></div>
+    <div class="stepj"><span>5</span><div>Try <b>Complete the look</b>, switch language to <b>हिन्दी Hindi</b>, or say “It's too long on me”.</div></div>
+    <div class="stepj"><span>6</span><div>Open the <a href="manager.html" target="_blank"><b>manager view</b></a> → ask “Which styles run small, and what should I restock?”</div></div>
+    <div class="stepj"><span>7</span><div>Open the <a href="catalogue.html" target="_blank"><b>Catalogue Agent</b></a> → upload <a href="sample_size_chart_with_error.png" target="_blank">this sample chart</a>; the agent catches the typo and sends it to review.</div></div>
+  </div>
+  <div>
+    <div class="panel center">
+      <b>Use your phone</b><div class="small muted">Scan to open the app with the demo shopper</div>
+      <div id="qr" style="margin:8px auto"></div>
+      <div class="small muted">Then point the phone's <b>Scan tag</b> camera at a barcode on the <a href="tags.html" target="_blank">demo tag sheet</a> on this screen.</div>
+    </div>
+    <div class="panel">
+      <b>More barcodes to try</b> <span class="small muted">(demo shopper Ananya)</span>
+      <table class="cat" style="margin-top:6px">
+        <tr><td><code>2026001010006</code></td><td>Ivory Chikankari Kurta M · fits, a bit long → ask the agent; it finds the <b>Petite</b> version</td></tr>
+        <tr><td><code>2026004010003</code></td><td>Rose Gold Sequin Dress M · fits, but <b>out of stock here</b> → agent finds the nearby store</td></tr>
+        <tr><td><code>2026021010000</code></td><td>Rigid Mom Jeans 28 · <b>fits standing but digs in when sitting</b> → take 30 (🪑 sitting check)</td></tr>
+        <tr><td><code>2026022010009</code></td><td>Tailored Extra-Slim Shirt M · <b>fits standing but pulls at the buttons when sitting</b> → take L. Use the men's demo: <a href="./?demo=rohan&store=BLR-07&room=4" target="_blank">open as Rohan</a></td></tr>
+        <tr><td><code>2026007010000</code></td><td>Stretch Jeans 28 → <b>take 30</b></td></tr>
+        <tr><td><code>2026003010004</code></td><td>Emerald Anarkali M · fits well</td></tr>
+      </table>
+    </div>
+  </div>
+  </div>
+
+  <div class="panel">
+    <h3 style="margin-top:0">Sign in / sign up (optional)</h3>
+    <p class="small">Everything works as a guest. To try accounts: open the <a href="./" target="_blank">app</a> without the demo link and use the <b>test phone number +91 99999 00001</b> with <b>OTP 123456</b> (no real SMS is sent), or the <b>test email judge@snug.demo</b> / password <b>SnugDemo#2026</b>. Accounts store only name and phone/email; body measurements stay on the phone.</p>
+  </div>
+  <div class="panel">
+    <h3 style="margin-top:0">Also try</h3>
+    <ul class="small">
+      <li><b>Real body scan</b> (phone): Passport → “Start over” → <i>Scan my body</i> → live camera guide. MediaPipe runs on the phone; photos are never uploaded.</li>
+      <li><b>No photos?</b> “Tell Snug what you wear” estimates measurements from sizes you own.</li>
+      <li><b>Store kiosk</b> (concept option 3): open <a href="kiosk.html" target="_blank">kiosk.html</a> on a laptop, scan (or tap “Use a demo shopper”), then scan the QR with your phone; the passport moves to the phone without touching the server.</li>
+      <li><b>Several people on one phone</b>: in the Passport tab tap <b>+ Add person</b> (e.g. add Demo: Rohan next to Ananya), then scan a tag and see <b>Sizes for everyone</b>; tap a name to switch whose size the agent fetches.</li>
+      <li><b>18 stores in 8 metro cities</b>: change the store in the app's Passport tab (or tap “📍 Use my location”); stock, nearby stores, staff screen and manager insights follow the store.</li>
+      <li><b>Trial-room QR</b>: <a href="placards.html" target="_blank">placards</a>. Scanning a room QR tells Snug which room to send sizes to.</li>
+      <li><b>Developer view</b> of every agent tool call: <a href="/dev-ui/" target="_blank">ADK dev UI</a>.</li>
+    </ul>
+    <p class="small muted"><b>What's real:</b> on-device MediaPipe measurement and fit engine, barcode scanning, Gemini agents (Google ADK) with live tool use, staff tasks, Cloud Run. <b>Demo data:</b> fictional brands, catalogue and stores (barcodes use the in-store-only prefix 20–29), demo shopper profiles, and simulated past feedback in the manager view. <b>Privacy:</b> body measurements never leave the phone; the AI sees only fit verdicts.</p>
+  </div>
+</div>
+<script src="vendor/qrcode-generator.js"></script>
+<script>
+(async function () {
+  const appUrl = new URL("./?demo=ananya&store=BLR-07&room=4", location.href).href;
+  const q = qrcode(0, "M"); q.addData(appUrl); q.make(); document.getElementById("qr").innerHTML = q.createImgTag(5, 6);
+  try {
+    const s = await (await fetch("/api/status")).json();
+    document.getElementById("dot").className = "ok-dot on";
+    document.getElementById("st").textContent = `System online · ${s.garments} garments · AI: ${s.model || "configured"}`;
+  } catch { document.getElementById("dot").className = "ok-dot off"; document.getElementById("st").textContent = "System check failed"; }
+})();
+</script>
+</body>
+</html>

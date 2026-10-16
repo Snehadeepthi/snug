@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Snug: trial-room placards</title><link rel="icon" href="logo.svg">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="page">
+  <div class="pagebar noprint">
+    <a class="brand" href="./"><img src="logo.svg" alt="" width="34"><b>snug</b>&nbsp;<span class="muted">“Mirror Tap” trial-room placards</span></a>
+    <div class="row" style="flex:0 0 auto;gap:8px"><select id="store" style="width:auto"></select><button class="btn dark" style="width:auto;margin:0" onclick="print()">Print</button></div>
+  </div>
+  <p class="muted small noprint">Stick one in each trial room. Shoppers scan the QR (or tap an NFC sticker programmed with the same link) and Snug opens already knowing the store and room, so the agent can send the right size straight to them. To make an NFC version, write the link under each QR to any NFC sticker with a free NFC-writer app.</p>
+  <div id="placards" class="placards"></div>
+</div>
+<script src="vendor/qrcode-generator.js"></script>
+<script src="js/common.js"></script>
+<script>
+(async function () {
+  const { j, esc } = Snug; const $ = (s) => document.querySelector(s);
+  const c = await j("/api/config");
+  $("#store").innerHTML = Snug.storeOptions(c.stores);
+  $("#store").value = new URLSearchParams(location.search).get("store") || c.default_store;
+  function render() {
+    const id = $("#store").value, base = new URL("./", location.href).href;
+    $("#placards").innerHTML = c.stores[id].trial_rooms.map((room) => {
+      const url = `${base}?store=${encodeURIComponent(id)}&room=${encodeURIComponent(room)}`;
+      const q = qrcode(0, "M"); q.addData(url); q.make();
+      return `<div class="placard"><img src="logo.svg" width="40" style="width:40px;height:40px"><div class="pr">Room ${esc(room)}</div>
+        <div><b>Not sure it fits?</b><br>Scan or tap to check your size</div>${q.createImgTag(6, 8)}
+        <div class="small muted">${esc(c.stores[id].name)}</div><div class="small" style="word-break:break-all">${esc(url)}</div></div>`;
+    }).join("");
+  }
+  $("#store").onchange = render; render();
+})();
+</script>
+</body>
+</html>

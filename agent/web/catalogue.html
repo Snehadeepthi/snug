@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Snug: Catalogue Agent</title><link rel="icon" href="logo.svg">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="page" style="max-width:800px">
+  <div class="pagebar"><a class="brand" href="./"><img src="logo.svg" alt="" width="34"><b>snug</b>&nbsp;<span class="muted">catalogue agent</span></a></div>
+  <div class="panel">
+    <h2>Turn any brand size chart into Snug data</h2>
+    <p class="muted small">Upload a photo or PDF of a size chart. Gemini reads it, the agent validates it (units, order, realistic ranges) and saves it. Anything suspicious goes to human review.</p>
+    <label class="photo-drop"><input type="file" id="chartFile" accept="image/*,application/pdf"><b>Choose size chart…</b></label>
+    <p class="small">Try: <a href="sample_size_chart.png" target="_blank">clean chart</a> · <a href="sample_size_chart_with_error.png" target="_blank">chart with a typo</a> (download, then upload)</p>
+    <div id="catChat" class="chat" style="min-height:0"></div>
+  </div>
+  <div class="panel"><h3 style="margin-top:0">Catalogue</h3><div id="catalogue"></div></div>
+</div>
+<script src="js/common.js"></script>
+<script>
+(function () {
+  const { j, esc, addMsg, createSession, runAgent } = Snug; const $ = (s) => document.querySelector(s);
+  const uid = "catalogue-" + Math.random().toString(36).slice(2, 8); let sid = null;
+  async function refresh() {
+    const rows = await j("/api/catalogue");
+    rows.sort((a, b) => (b.style_id.startsWith("NEW") ? 1 : 0) - (a.style_id.startsWith("NEW") ? 1 : 0));
+    $("#catalogue").innerHTML = `<table class="cat"><tr><th>ID</th><th>Name</th><th>Sizes</th><th>Status</th></tr>${rows.map((g) =>
+      `<tr><td>${esc(g.style_id)}</td><td>${esc(g.name)}<br><span class="muted">${esc(g.brand)} · ${esc(g.category)} · ${esc(g.source || "")}</span></td><td>${Object.keys(g.sizes).join(" ")}</td><td><span class="status-pill ${g.status}">${esc((g.status || "").replace("_", " "))}</span></td></tr>`).join("")}</table>`;
+  }
+  $("#chartFile").onchange = async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    const b64 = await new Promise((ok) => { const r = new FileReader(); r.onload = () => ok(r.result.split(",")[1]); r.readAsDataURL(f); });
+    addMsg($("#catChat"), "user", "Uploaded " + esc(f.name));
+    try {
+      sid ||= await createSession("catalogue_agent", uid, {});
+      sid = await runAgent({ app: "catalogue_agent", uid, sessionId: sid, box: $("#catChat"), recreate: () => createSession("catalogue_agent", uid, {}),
+        parts: [{ text: "Here is a brand size chart. Extract it and save it to the catalogue." }, { inlineData: { mimeType: f.type || "image/png", data: b64 } }] });
+    } catch (err) { addMsg($("#catChat"), "agent", "Error: " + esc(err.message)); }
+    refresh(); e.target.value = "";
+  };
+  refresh();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Snug: Store staff</title><link rel="icon" href="logo.svg">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="page">
+  <div class="pagebar">
+    <a class="brand" href="./"><img src="logo.svg" alt="" width="34"><b>snug</b>&nbsp;<span class="muted">staff</span></a>
+    <span class="small"><a href="judges.html">Evaluator guide</a> · <a href="manager.html">Manager view</a> · <a href="placards.html">Room QR placards</a> · <a href="kiosk.html">Kiosk</a> · <a href="tags.html">Demo tags</a></span>
+    <select id="store" style="max-width:320px"></select>
+  </div>
+  <div class="impact" id="impact"></div>
+  <div class="panel">
+    <h2>Trial-room requests <span id="count" class="chip">0 open</span></h2>
+    <p class="muted small">Sent live by the Snug AI agent when a shopper needs a different size or a trial room.</p>
+    <div id="tasks" class="tasks"><p class="empty">No requests yet.</p></div>
+  </div>
+  <div class="panel holds"><h3 style="margin-top:0">Trial-room holds</h3><div id="holds"><p class="empty">No holds yet.</p></div></div>
+</div>
+<script src="js/common.js"></script>
+<script>
+(async function () {
+  const { j, esc } = Snug; const $ = (s) => document.querySelector(s); const seen = new Set(); let first = true;
+  const c = await j("/api/config");
+  $("#store").innerHTML = Snug.storeOptions(c.stores);
+  $("#store").value = new URLSearchParams(location.search).get("store") || c.default_store;
+  async function refresh() {
+    const id = $("#store").value;
+    try {
+      const [tasks, holds] = await Promise.all([j(`/api/stores/${id}/tasks`), j(`/api/stores/${id}/holds`)]);
+      $("#count").textContent = tasks.filter((t) => t.status === "open").length + " open";
+      $("#tasks").innerHTML = tasks.length ? tasks.map((t) => { const n = !first && !seen.has(t.id); seen.add(t.id);
+        return `<div class="task ${t.status} ${n ? "new" : ""}"><div class="room">Room ${esc(t.room)}</div><div>${esc(t.message)}</div>
+        <div class="meta"><span>${new Date(t.created * 1000).toLocaleTimeString()}</span>${t.status === "open" ? `<button data-id="${t.id}">Done</button>` : "done ✓"}</div></div>`; }).join("") : '<p class="empty">No requests yet.</p>';
+      $("#holds").innerHTML = holds.length ? holds.map((h) => `<div class="hold"><b>Room ${esc(h.room)}</b>: ${h.items.map((i) => esc(i.name + " (" + i.size + ")")).join(", ")}</div>`).join("") : '<p class="empty">No holds yet.</p>';
+      first = false;
+      const imp = await j(`/api/stores/${id}/impact`);
+      $("#impact").innerHTML = [["wrong_size_tryons_avoided", "Wrong-size try-ons avoided today"], ["trial_room_trips_saved_est", "Trial-room trips saved (est.)"], ["staff_requests", "Requests from Snug today"]]
+        .map(([k, l]) => `<div><b>${imp[k]}</b><span>${l}</span></div>`).join("");
+    } catch (e) { console.warn(e); }
+  }
+  $("#tasks").onclick = async (e) => { const id = e.target.dataset.id; if (!id) return; await j(`/api/stores/${$("#store").value}/tasks/${id}/done`, { method: "POST" }); refresh(); };
+  $("#store").onchange = () => { first = true; refresh(); };
+  refresh(); setInterval(refresh, 2000);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+Third-party libraries bundled for offline reliability:
+- html5-qrcode 2.3.8 (Apache-2.0) https://github.com/mebjas/html5-qrcode
+- JsBarcode 3.12.3 (MIT) https://github.com/lindell/JsBarcode
+- qrcode-generator 2.0.4 (MIT) https://github.com/kazuhikoarase/qrcode-generator
+MediaPipe Tasks Vision is loaded from cdn.jsdelivr.net and the model from storage.googleapis.com (Apache-2.0).
+- Firebase JS SDK 12.19.0 (Apache-2.0), app + auth modules bundled with esbuild into firebase-auth.bundle.mjs https://github.com/firebase/firebase-js-sdk

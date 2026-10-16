@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Snug: demo price tags</title><link rel="icon" href="logo.svg">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="page">
+  <div class="pagebar noprint">
+    <a class="brand" href="./"><img src="logo.svg" alt="" width="34"><b>snug</b>&nbsp;<span class="muted">demo price tags</span></a>
+    <button class="btn dark" style="width:auto" onclick="print()">Print tags</button>
+  </div>
+  <p class="muted small noprint">Fictional garments for the demo. Open this page on a laptop (or print it) and scan the barcodes with the Snug app on your phone.</p>
+  <div id="tags" class="tags"></div>
+</div>
+<script src="vendor/JsBarcode.all.min.js"></script>
+<script src="js/common.js"></script>
+<script>
+(async function () {
+  const { j, esc } = Snug;
+  const gs = await j("/api/garments");
+  const box = document.getElementById("tags");
+  for (const g of gs) for (const [size, code] of Object.entries(g.gtins || {})) {
+    const d = document.createElement("div"); d.className = "tag";
+    d.innerHTML = `<div class="tb">${esc(g.brand)}</div><div class="tn">${esc(g.name)}</div><div class="ts">${esc(size)}</div><div class="small">₹${g.price_inr.toLocaleString("en-IN")}</div><svg></svg>`;
+    box.appendChild(d);
+    try { JsBarcode(d.querySelector("svg"), code, { format: "EAN13", height: 60, width: 2, fontSize: 14, margin: 6 }); }
+    catch { d.querySelector("svg").outerHTML = `<div class="small">${code}</div>`; }
+  }
+})();
+</script>
+</body>
+</html>

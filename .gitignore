@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.adk/
+.pytest_cache/
+*-key.json
+agent/web/vendor/mediapipe/
+*.zip
+.DS_Store
+*.zip
+.DS_Store

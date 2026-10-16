@@ -1,0 +1,14 @@
+{
+  "name": "Snug: Fit Passport",
+  "short_name": "Snug",
+  "description": "Scan once at home, scan any tag in store, get the right size first try.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#FFF4EC",
+  "theme_color": "#2B2140",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
+}

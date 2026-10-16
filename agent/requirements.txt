@@ -1,0 +1,4 @@
+google-adk>=2.11
+google-cloud-firestore>=2.16
+python-dotenv>=1.0
+uvicorn>=0.30

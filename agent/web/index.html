@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#2B2140">
+  <title>Snug: your Fit Passport</title>
+  <link rel="icon" href="logo.svg">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="phone">
+  <header class="appbar">
+    <a class="brand" href="./"><img src="logo.svg" alt=""><b>snug</b></a>
+    <div class="chips"><button class="chip hidden" id="personChip" title="Switch person">👤</button><button class="chip" id="storeChip" title="Change store">Store</button></div>
+  </header>
+
+  <main class="screens">
+    <!-- ===== SIGN IN / SIGN UP ===== -->
+    <section id="view-auth" class="view hidden">
+      <div class="center" style="margin:6px 0 10px"><img src="logo.svg" width="64" height="64" alt=""></div>
+      <h1 class="center">Welcome to Snug</h1>
+      <p class="lead center">Sign in or create your account to keep your Fit Passport settings.</p>
+      <div id="authNotConfigured" class="warnlist hidden">Sign-in isn't switched on for this demo yet. You can use every feature as a guest.</div>
+      <div id="authForms">
+        <div class="seg"><button class="active" data-auth-tab="phone">📱 Phone</button><button data-auth-tab="email">✉️ Email</button></div>
+
+        <div id="authPhone">
+          <div id="phoneStep1">
+            <label class="field">Mobile number
+              <div class="row" style="gap:6px">
+                <select id="phoneCountry" style="flex:0 0 96px"><option value="+91">🇮🇳 +91</option><option value="+65">🇸🇬 +65</option><option value="+971">🇦🇪 +971</option><option value="+1">🇺🇸 +1</option><option value="+44">🇬🇧 +44</option></select>
+                <input id="phoneNumber" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="98765 43210">
+              </div>
+            </label>
+            <div id="phoneErr" class="errmsg hidden"></div>
+            <button class="btn primary" id="sendOtp">Send OTP</button>
+            <p class="small muted center">New here? Verifying your number creates your account automatically.</p>
+          </div>
+          <div id="phoneStep2" class="hidden">
+            <p class="small">Enter the 6-digit code sent to <b id="otpSentTo"></b></p>
+            <input id="otpCode" class="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••">
+            <div id="otpErr" class="errmsg hidden"></div>
+            <button class="btn primary" id="verifyOtp">Verify &amp; continue</button>
+            <div class="row"><button class="btn link" id="resendOtp" disabled>Resend in 30s</button><button class="btn link" id="changeNumber">Change number</button></div>
+          </div>
+          <div id="nameStep" class="hidden">
+            <label class="field">What should we call you?<input id="newName" autocomplete="name" placeholder="Your name"></label>
+            <button class="btn primary" id="saveName">Continue</button>
+          </div>
+          <div id="recaptcha"></div>
+        </div>
+
+        <div id="authEmail" class="hidden">
+          <div class="seg small-seg"><button class="active" data-email-mode="signin">Sign in</button><button data-email-mode="signup">Create account</button></div>
+          <div id="signupOnly" class="hidden"><label class="field">Your name<input id="signupName" autocomplete="name"></label></div>
+          <label class="field">Email<input id="email" type="email" autocomplete="email" placeholder="you@example.com"></label>
+          <label class="field">Password<input id="password" type="password" autocomplete="current-password" placeholder="At least 6 characters"></label>
+          <label class="field hidden" id="confirmWrap">Confirm password<input id="password2" type="password" autocomplete="new-password"></label>
+          <div id="emailErr" class="errmsg hidden"></div>
+          <button class="btn primary" id="emailGo">Sign in</button>
+          <button class="btn link" id="forgotPw">Forgot password?</button>
+        </div>
+      </div>
+      <button class="btn ghost" id="continueGuest">Continue as guest</button>
+      <p class="small muted center">🔒 Your account stores only your name and phone/email. Body measurements always stay on your phone.</p>
+    </section>
+
+    <!-- ===== ME / FIT PASSPORT ===== -->
+    <section id="view-me" class="view">
+      <div class="acct" id="acctCard"></div>
+      <div class="people hidden" id="peopleBar" aria-label="People on this phone"></div>
+      <!-- no profile yet -->
+      <div id="me-empty">
+        <h1 id="emptyTitle">Your Fit Passport</h1>
+        <p class="lead" id="emptyLead">Scan your body once, privately at home. Then scan any clothing tag in a store and know your size instantly.</p>
+        <div class="steps3">
+          <div><span>1</span>Standing and sitting photos at home. Measured on your phone; photos are deleted instantly.</div>
+          <div><span>2</span>In the store, scan the barcode on the price tag.</div>
+          <div><span>3</span>See if it fits, and let Snug's AI get you the right size.</div>
+        </div>
+        <button class="btn primary" id="startScan">Scan my body (3 quick photos)</button>
+        <button class="btn ghost" id="startEstimate">No photos? Tell Snug what you wear</button>
+        <button class="btn ghost" id="startManual">Enter my measurements</button>
+        <div class="row">
+          <button class="btn link" data-demo="ananya">Demo: Ananya</button>
+          <button class="btn link" data-demo="rohan">Demo: Rohan</button>
+        </div>
+        <button class="btn link hidden" id="cancelAdd">Cancel</button>
+      </div>
+
+      <!-- body scan wizard -->
+      <div id="me-scan" class="hidden">
+        <h2>Body scan</h2>
+        <p class="lead small">Wear fitted clothes, tie hair back, stand against a plain wall. Prop the phone at waist height, 2–3 m away, or ask a friend.</p>
+        <div class="grid2">
+          <label class="field">Your height (cm)<input id="scanHeight" type="number" min="120" max="220" value="165" inputmode="decimal"></label>
+          <label class="field">Fit section<select id="scanGender"><option value="women">Women</option><option value="men">Men</option></select></label>
+        </div>
+        <button class="btn dark" id="openCam">📷 Use the live camera guide (recommended)</button>
+        <div class="or">or upload photos</div>
+        <label class="photo-drop">
+          <input type="file" id="frontFile" accept="image/*" capture="environment">
+          <svg class="pose" viewBox="0 0 60 80" fill="none" stroke="#2B2140" stroke-width="3" stroke-linecap="round"><circle cx="30" cy="10" r="6"/><path d="M30 17v28M30 22l-14 16M30 22l14 16M30 45l-9 30M30 45l9 30"/></svg>
+          <b>1. Front photo</b><br><span class="small muted">Face the camera, arms slightly away from your body</span>
+          <div class="done hidden" id="frontOk">✓ Front photo ready</div>
+        </label>
+        <label class="photo-drop">
+          <input type="file" id="sideFile" accept="image/*" capture="environment">
+          <svg class="pose" viewBox="0 0 60 80" fill="none" stroke="#2B2140" stroke-width="3" stroke-linecap="round"><circle cx="30" cy="10" r="6"/><path d="M30 17v28M30 22l2 20M30 45l-2 30M30 45l3 30"/></svg>
+          <b>2. Side photo</b> <span class="small muted">(recommended)</span><br><span class="small muted">Turn 90°, arms down</span>
+          <div class="done hidden" id="sideOk">✓ Side photo ready</div>
+        </label>
+        <label class="photo-drop">
+          <input type="file" id="seatedFile" accept="image/*" capture="environment">
+          <svg class="pose" viewBox="0 0 60 80" fill="none" stroke="#2B2140" stroke-width="3" stroke-linecap="round"><circle cx="24" cy="10" r="6"/><path d="M24 17v28M24 45h22M46 45v28M22 26l12 4M14 75h40M12 45v30"/></svg>
+          <b>3. Sitting photo</b> <span class="small muted">(recommended: shirts, kurtas, jeans, trousers)</span><br><span class="small muted">Sit upright on a chair, side-on, arms crossed on your chest</span>
+          <div class="done hidden" id="seatedOk">✓ Sitting photo ready</div>
+        </label>
+        <div id="scanStatus" class="status hidden"></div>
+        <button class="btn primary" id="runMeasure" disabled>Measure me</button>
+        <button class="btn link" data-back>Cancel</button>
+        <p class="small muted center">🔒 Photos are processed on this phone with Google MediaPipe and never uploaded.</p>
+      </div>
+
+      <!-- no-scan estimate (Mirror Tap / reference sizes) -->
+      <div id="me-estimate" class="hidden">
+        <h2>Tell Snug what you wear</h2>
+        <p class="lead small">No photos needed. Pick clothes that fit you well; Snug estimates your measurements from their sizes. You can scan later for better accuracy.</p>
+        <div class="grid2">
+          <label class="field">Your height (cm)<input id="estHeight" type="number" min="120" max="220" value="162" inputmode="decimal"></label>
+          <label class="field">Fit section<select id="estGender"><option value="women">Women</option><option value="men">Men</option></select></label>
+        </div>
+        <div id="estItems"></div>
+        <button class="btn primary" id="runEstimate">Estimate my measurements</button>
+        <button class="btn link" data-back>Cancel</button>
+      </div>
+
+      <!-- review / manual entry -->
+      <div id="me-review" class="hidden">
+        <h2 id="reviewTitle">Check your measurements</h2>
+        <p class="lead small" id="reviewLead">Adjust anything that looks off. Saved only on this phone.</p>
+        <div id="reviewWarn" class="warnlist hidden"></div>
+        <label class="field">Name of this person<input id="reviewName" maxlength="24" autocomplete="off" placeholder="e.g. Sneha, Mom, Arjun"></label>
+        <div class="grid2" id="reviewFields"></div>
+        <label class="field">Fit section<select id="reviewGender"><option value="women">Women</option><option value="men">Men</option></select></label>
+        <button class="btn primary" id="saveProfile">Save my Fit Passport</button>
+        <button class="btn link" data-back>Cancel</button>
+      </div>
+
+      <!-- saved passport -->
+      <div id="me-ready" class="hidden">
+        <div class="passport">
+          <div class="pt">Fit Passport</div>
+          <div class="pn" id="ppName">Ready</div>
+          <div class="lock">🔒 Stored only on this phone · <span id="ppMethod"></span></div>
+          <div class="meas hidden" id="ppMeas"></div>
+        </div>
+        <button class="btn primary" data-goto="scan">Scan a clothing tag</button>
+        <div class="card">
+          <label class="field">How do you like clothes to fit?
+            <select id="prefSelect"><option value="snug">Snug</option><option value="regular" selected>Regular</option><option value="relaxed">Relaxed (nothing tight)</option></select>
+          </label>
+          <label class="field">Store you're in<select id="storeSelect"></select></label>
+          <button class="btn ghost" id="nearMe" style="margin-top:0">📍 Use my location to find the nearest store</button>
+          <div class="small muted" id="nearMeMsg"></div>
+        </div>
+        <div class="row">
+          <button class="btn ghost" id="toggleMeas">Show measurements</button>
+          <button class="btn ghost" id="editProfile">✏️ Edit</button>
+          <button class="btn ghost" id="rescan">Re-scan</button>
+        </div>
+        <button class="btn ghost" id="openAccuracy">📏 Check scan accuracy with a tape</button>
+        <div id="accuracy" class="card hidden">
+          <b>How close was the scan?</b>
+          <p class="small muted">Measure one spot with a tape and compare. Only the error % is shared (anonymously) to improve Snug.</p>
+          <div class="grid2">
+            <label class="field">Measurement<select id="accPom"><option value="waist">Waist</option><option value="chest">Chest / bust</option><option value="hip">Hip</option><option value="inseam">Inseam</option></select></label>
+            <label class="field">Tape value (cm)<input id="accVal" type="number" step="0.5" inputmode="decimal"></label>
+          </div>
+          <button class="btn dark" id="accGo">Compare</button>
+          <div id="accOut" class="status hidden"></div>
+          <button class="btn ghost hidden" id="accUse">Use my tape value</button>
+        </div>
+        <button class="btn ghost hidden" id="installBtn">📲 Install Snug on this phone</button>
+        <button class="btn link" id="deleteProfile">Delete this person's passport</button>
+      </div>
+    </section>
+
+    <!-- ===== SCAN TAG ===== -->
+    <section id="view-scan" class="view hidden">
+      <h2>Scan a clothing tag</h2>
+      <p class="lead small">Point your camera at the barcode on the price tag, or at the <b>“Tap / scan to check your fit”</b> QR in your trial room.</p>
+      <div id="reader"></div>
+      <div class="row">
+        <button class="btn dark" id="camStart">Start camera</button>
+        <button class="btn ghost hidden" id="camStop">Stop</button>
+      </div>
+      <div class="or">or</div>
+      <label class="btn ghost" style="cursor:pointer">Scan from a photo of the tag<input type="file" id="tagPhoto" accept="image/*" hidden></label>
+      <div class="row" style="align-items:center">
+        <input id="manualCode" inputmode="numeric" placeholder="Type barcode number">
+        <button class="btn dark" id="manualGo" style="flex:0 0 90px">Check</button>
+      </div>
+      <p class="small muted center">Demo tags to scan: <a href="tags.html" target="_blank">open tag sheet</a> on another screen or print it.</p>
+      <div id="scanErr" class="warnlist hidden"></div>
+    </section>
+
+    <!-- ===== FIT RESULT ===== -->
+    <section id="view-result" class="view hidden">
+      <div class="garment-head">
+        <div class="small muted" id="rBrand"></div>
+        <div class="gname" id="rName"></div>
+        <div class="small" id="rMeta"></div>
+        <div class="small" id="rFor" style="margin-top:4px"></div>
+      </div>
+      <div class="verdict" id="rVerdict"></div>
+      <h3>How size <span id="rScanned"></span> fits you</h3>
+      <div class="fitbars" id="rBars"></div>
+      <div id="rSitting" class="card soft hidden" style="margin-top:12px"></div>
+      <div id="rFamily" class="card hidden" style="margin-top:12px"></div>
+      <h3>All sizes</h3>
+      <div class="sizes" id="rSizes"></div>
+      <button class="btn primary" id="rAction">Get the right size for me</button>
+      <button class="btn ghost" id="rAsk">Ask Snug about this</button>
+      <button class="btn link" data-goto="scan">Scan another tag</button>
+      <p class="small muted center">Calculated on your phone. Snug's AI only sees the verdict, never your measurements.</p>
+    </section>
+
+    <!-- ===== ASK SNUG (AGENT) ===== -->
+    <section id="view-ask" class="view hidden">
+      <h2>Ask Snug</h2>
+      <div class="row" style="align-items:center;margin:6px 0">
+        <select id="langSelect" aria-label="Language">
+          <option value="en-IN|English">English</option><option value="hi-IN|Hindi">हिन्दी Hindi</option>
+          <option value="kn-IN|Kannada">ಕನ್ನಡ Kannada</option><option value="ta-IN|Tamil">தமிழ் Tamil</option>
+          <option value="te-IN|Telugu">తెలుగు Telugu</option><option value="mr-IN|Marathi">मराठी Marathi</option>
+          <option value="bn-IN|Bengali">বাংলা Bengali</option>
+        </select>
+        <label class="small" style="flex:0 0 auto;display:flex;gap:6px;align-items:center"><input type="checkbox" id="speakToggle" style="width:auto"> 🔊 Read aloud</label>
+      </div>
+      <p class="privacy-note">🤖 Snug's AI agent acts for you: checks stock, holds a trial room, messages staff. It sees fit verdicts like “L fits”, never your measurements.</p>
+      <div class="suggestions" id="suggestions">
+        <button>Is my size in stock here?</button>
+        <button>Hold it in a trial room please</button>
+        <button>Find me a wedding outfit under ₹4,000 that fits</button>
+        <button>It's too long on me</button>
+        <button>Complete the look</button>
+      </div>
+      <div id="chat" class="chat"></div>
+      <form id="chatForm" class="composer hidden">
+        <button type="button" id="micBtn" class="mic" title="Speak">🎤</button>
+        <input id="chatInput" autocomplete="off" placeholder="Ask Snug… or tap 🎤">
+        <button type="submit">Send</button>
+      </form>
+    </section>
+  </main>
+
+  <!-- live camera guide -->
+  <div id="camView" class="camview hidden">
+    <video id="camVideo" playsinline muted></video>
+    <svg id="camGuide" class="camguide" viewBox="0 0 100 200" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="camtop"><b id="camTitle">Front photo</b><span id="camHint">Stand so your whole body fits inside the outline</span></div>
+    <div id="camCount" class="camcount hidden">5</div>
+    <div class="cambar">
+      <button class="btn ghost" id="camCancel">Cancel</button>
+      <button class="btn primary" id="camShoot">Start 5-sec timer</button>
+      <button class="btn ghost" id="camFlip" title="Switch camera">🔄</button>
+      <button class="btn ghost hidden" id="camSkip">Skip</button>
+    </div>
+  </div>
+
+  <nav class="bottomnav">
+    <button data-goto="me" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>Passport</button>
+    <button data-goto="scan" class="scanbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2M8 8v8M11 8v8M14 8v8M16 8v8"/></svg>Scan tag</button>
+    <button data-goto="ask"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>Ask Snug</button>
+  </nav>
+</div>
+
+<script src="vendor/html5-qrcode.min.js"></script>
+<script src="js/common.js"></script>
+<script src="js/fit.js"></script>
+<script src="js/measure_core.js"></script>
+<script type="module" src="js/measure.js"></script>
+<script src="js/app.js"></script>
+<script type="module" src="js/auth.js"></script>
+</body>
+</html>

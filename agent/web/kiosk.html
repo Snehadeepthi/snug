@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Snug: Fit Kiosk</title><link rel="icon" href="logo.svg">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body { background: var(--plum); color: #fff; }
+    .kiosk { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 20px; padding: 20px; min-height: 100vh; }
+    .kcam { position: relative; background: #111; border-radius: 24px; overflow: hidden; min-height: 70vh; }
+    .kcam video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+    .kcam .camguide { inset: 6% 25% 6%; width: 50%; height: 88%; }
+    .kcam .idle { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 30px; color: #ddd; }
+    .kpanel { background: #fff; color: var(--plum); border-radius: 24px; padding: 26px; display: flex; flex-direction: column; }
+    .kpanel h1 { font-size: 32px; } .kpanel .lead { font-size: 17px; }
+    .kstep { display: none; } .kstep.on { display: block; }
+    .kprog { display: flex; gap: 6px; margin: 4px 0 14px; } .kprog span { flex: 1; height: 6px; border-radius: 4px; background: var(--line); } .kprog span.on { background: var(--coral); }
+    .kqr { display: grid; place-items: center; margin: 10px 0; } .kqr img { width: 260px; height: 260px; image-rendering: pixelated; }
+    .big { font-size: 18px; padding: 16px; }
+    .reset { font-size: 13px; color: var(--muted); text-align: center; }
+    @media (max-width: 900px) { .kiosk { grid-template-columns: 1fr; } .kcam { min-height: 55vh; } }
+  </style>
+</head>
+<body>
+<div class="kiosk">
+  <div class="kcam">
+    <video id="v" playsinline muted></video>
+    <svg id="guide" class="camguide" viewBox="0 0 100 200" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="idle" id="idle"><div><img src="logo.svg" width="90" alt=""><h1 style="color:#fff">Snug Fit Kiosk</h1>
+      <p>Open-floor body scan · fully clothed · standing + sitting check<br>Your photos are never stored. Only your measurements go to <b>your</b> phone.</p></div></div>
+    <div id="count" class="camcount hidden">5</div>
+  </div>
+
+  <div class="kpanel">
+    <div class="pagebar" style="margin:0"><span class="brand"><img src="logo.svg" width="34" alt=""><b>snug</b>&nbsp;<span class="muted">fit kiosk</span></span><select id="kStore" style="width:auto;max-width:240px;font-size:13px;padding:6px"></select></div>
+    <div class="kprog"><span id="p1" class="on"></span><span id="p2"></span><span id="p3"></span><span id="p4"></span></div>
+
+    <section class="kstep on" id="s1">
+      <h1>Find your size in 10 seconds</h1>
+      <p class="lead">Stand on the mat facing the screen. Snug measures you with the camera; nothing is recorded.</p>
+      <div class="grid2">
+        <label class="field">Your height (cm)<input id="h" type="number" min="120" max="220" value="165" inputmode="decimal" class="big"></label>
+        <label class="field">Fit section<select id="g" class="big"><option value="women">Women</option><option value="men">Men</option></select></label>
+      </div>
+      <label class="field">Name for this passport (optional)<input id="kName" maxlength="24" autocomplete="off" placeholder="e.g. Sneha" class="big"></label>
+      <button class="btn primary big" id="start">Start scan</button>
+      <button class="btn link" id="demo">No camera? Use a demo shopper</button>
+    </section>
+
+    <section class="kstep" id="s2">
+      <h1 id="poseTitle">1 of 2 · Face the screen</h1>
+      <p class="lead" id="poseHint">Stand inside the outline, arms slightly away from your body.</p>
+      <button class="btn primary big" id="shoot">Take photo in 5 seconds</button>
+      <button class="btn ghost hidden" id="skipSeat">Skip the sitting photo</button>
+      <div class="status hidden" id="status"></div>
+      <button class="btn link" id="cancel1">Cancel</button>
+    </section>
+
+    <section class="kstep" id="s3">
+      <h1>Scan this with your phone</h1>
+      <p class="lead">Your Fit Passport goes straight to your phone via this code. It never touches our servers.</p>
+      <div class="kqr" id="qr"></div>
+      <div id="warn" class="warnlist hidden"></div>
+      <details class="small"><summary>Show my measurements</summary><div id="meas" class="meas" style="color:var(--plum)"></div></details>
+      <p class="small muted">Then, in the store, scan any price tag with Snug to see if it fits.</p>
+      <button class="btn ghost" id="done">Done, clear the kiosk</button>
+      <p class="reset" id="resetMsg"></p>
+    </section>
+  </div>
+</div>
+
+<script src="vendor/qrcode-generator.js"></script>
+<script src="js/common.js"></script>
+<script src="js/measure_core.js"></script>
+<script type="module" src="js/measure.js"></script>
+<script>
+(async function () {
+  const { j, esc } = Snug; const $ = (s) => document.querySelector(s);
+  const GUIDE = {
+    front: '<circle cx="50" cy="20" r="11"/><path d="M50 31v62M50 40l-26 34M50 40l26 34M50 93l-15 95M50 93l15 95M36 38h28M38 93h24"/>',
+    side: '<circle cx="50" cy="20" r="11"/><path d="M50 31v62M50 40l4 48M50 93l-4 95M50 93l5 95M42 40c-4 20-4 40 0 53M58 40c6 20 6 40 0 53"/>',
+    seated: '<circle cx="40" cy="45" r="11"/><path d="M40 56v52M40 108h40M80 108v70M34 72l20 8M20 178h80M22 108v70"/>',
+  };
+  let stream = null, step = "front", front = null, side = null, seatedImg = null, resetTimer = null;
+  const params = new URLSearchParams(location.search);
+  const cfg = await j("/api/config"); let storeId = params.get("store") || localStorage.getItem("snug_kiosk_store") || cfg.default_store;
+  $("#kStore").innerHTML = Snug.storeOptions(cfg.stores); $("#kStore").value = storeId;
+  $("#kStore").onchange = (e) => { storeId = e.target.value; try { localStorage.setItem("snug_kiosk_store", storeId); } catch {} };
+
+  function show(id, prog) { document.querySelectorAll(".kstep").forEach((s) => s.classList.toggle("on", s.id === id)); [1, 2, 3, 4].forEach((n) => $("#p" + n).classList.toggle("on", n <= prog)); }
+  function beep(f) { try { const a = new AudioContext(), o = a.createOscillator(); o.frequency.value = f; o.connect(a.destination); o.start(); setTimeout(() => { o.stop(); a.close(); }, 120); } catch {} }
+  function stop() { stream?.getTracks().forEach((t) => t.stop()); stream = null; $("#v").srcObject = null; $("#guide").innerHTML = ""; $("#idle").classList.remove("hidden"); }
+  function pose(s) {
+    step = s; $("#guide").innerHTML = GUIDE[s];
+    $("#poseTitle").textContent = { front: "1 of 3 · Face the screen", side: "2 of 3 · Turn to your side", seated: "3 of 3 · Sit on the stool" }[s];
+    $("#poseHint").textContent = { front: "Stand inside the outline, arms slightly away from your body.", side: "Turn 90° to your left, arms down by your sides.",
+                                   seated: "Sit upright side-on, arms crossed on your chest. This checks how shirts, kurtas, jeans and trousers fit when you sit." }[s];
+    $("#skipSeat").classList.toggle("hidden", s !== "seated");
+    show("s2", s === "front" ? 2 : 3);
+  }
+  function reset() {
+    clearInterval(resetTimer); stop(); front = side = seatedImg = null; $("#kName").value = ""; $("#qr").innerHTML = ""; $("#meas").innerHTML = "";
+    $("#status").classList.add("hidden"); $("#shoot").disabled = false; show("s1", 1);
+  }
+
+  // The passport travels kiosk screen -> phone camera inside the URL #fragment, which browsers never send to a server.
+  function handoff(m) {
+    const p = { v: 1, height: m.height, chest: m.chest, waist: m.waist, hip: m.hip, inseam: m.inseam, shoulder: m.shoulder,
+                seated_waist: m.seated_waist, seated_hip: m.seated_hip, gender: m.gender, method: "kiosk",
+                name: ($("#kName").value || m.name || "").trim().slice(0, 24) || undefined };
+    const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(p)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    const url = new URL("./", location.href).href + "?store=" + encodeURIComponent(storeId) + "#passport=" + b64;
+    const q = qrcode(0, "M"); q.addData(url); q.make(); $("#qr").innerHTML = q.createImgTag(6, 8);
+    $("#meas").innerHTML = [["chest", "Chest"], ["waist", "Waist"], ["hip", "Hip"], ["inseam", "Inseam"], ["seated_waist", "Waist sitting"], ["seated_hip", "Hip sitting"]].filter(([k]) => m[k]).map(([k, l]) => `<div style="background:var(--cream)">${l}<b>${m[k]} cm</b></div>`).join("");
+    $("#warn").classList.toggle("hidden", !(m.warnings || []).length); $("#warn").innerHTML = (m.warnings || []).map(esc).join("<br>");
+    show("s3", 4); stop();
+    let left = 90; $("#resetMsg").textContent = `The kiosk clears itself in ${left} s.`;
+    resetTimer = setInterval(() => { left--; $("#resetMsg").textContent = `The kiosk clears itself in ${left} s.`; if (left <= 0) reset(); }, 1000);
+  }
+
+  $("#start").onclick = async () => {
+    const h = parseFloat($("#h").value); if (!(h >= 120 && h <= 220)) { alert("Please enter your height in cm."); return; }
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 1920 } }, audio: false });
+      $("#v").srcObject = stream; await $("#v").play(); $("#idle").classList.add("hidden"); pose("front");
+    } catch (e) { alert("Camera not available (" + (e.message || e) + "). Try the demo shopper."); }
+  };
+  $("#cancel1").onclick = reset; $("#done").onclick = reset;
+  $("#demo").onclick = () => { const d = cfg.profiles[$("#g").value === "men" ? "rohan" : "ananya"]; handoff({ ...d, warnings: ["Demo shopper (no camera used)."] }); };
+
+  $("#shoot").onclick = async () => {
+    $("#shoot").disabled = true; const c = $("#count"); c.classList.remove("hidden");
+    for (let n = 5; n > 0; n--) { c.textContent = n; beep(660); await new Promise((r) => setTimeout(r, 1000)); }
+    c.classList.add("hidden"); beep(1200);
+    const v = $("#v"), cv = document.createElement("canvas"); cv.width = v.videoWidth; cv.height = v.videoHeight; cv.getContext("2d").drawImage(v, 0, 0);
+    const blob = await new Promise((r) => cv.toBlob(r, "image/jpeg", 0.92)); cv.width = cv.height = 0;
+    $("#shoot").disabled = false;
+    if (step === "front") { front = blob; pose("side"); return; }
+    if (step === "side") { side = blob; pose("seated"); return; }
+    seatedImg = blob; measureNow();
+  };
+  $("#skipSeat").onclick = () => { seatedImg = null; measureNow(); };
+  async function measureNow() {
+    const st = $("#status"); st.classList.remove("hidden"); $("#shoot").disabled = true; $("#skipSeat").classList.add("hidden");
+    try {
+      for (let i = 0; i < 50 && !window.SnugMeasure; i++) await new Promise((r) => setTimeout(r, 200));
+      const m = await window.SnugMeasure.measureBody({ heightCm: parseFloat($("#h").value), frontFile: front, sideFile: side, seatedFile: seatedImg, onStatus: (t) => (st.textContent = t) });
+      front = side = seatedImg = null;                       // drop the photos
+      handoff({ ...m, gender: $("#g").value });
+    } catch (e) {
+      st.textContent = "Couldn't measure: " + e.message + " Please step back so your whole body is visible, and try again.";
+      $("#shoot").disabled = false; front = side = seatedImg = null; pose("front");
+    }
+  }
+})();
+</script>
+</body>
+</html>

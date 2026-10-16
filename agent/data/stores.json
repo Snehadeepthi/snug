@@ -1,0 +1,323 @@
+{
+ "BLR-07": {
+  "name": "Snug Demo Store, Indiranagar",
+  "city": "Bengaluru",
+  "area": "Indiranagar",
+  "lat": 12.9719,
+  "lng": 77.6412,
+  "trial_rooms": [
+   "1",
+   "2",
+   "3",
+   "4",
+   "5",
+   "6"
+  ],
+  "nearby": [
+   "BLR-12",
+   "BLR-21"
+  ]
+ },
+ "BLR-12": {
+  "name": "Snug Demo Store, Koramangala",
+  "city": "Bengaluru",
+  "area": "Koramangala",
+  "lat": 12.9352,
+  "lng": 77.6245,
+  "trial_rooms": [
+   "1",
+   "2",
+   "3",
+   "4"
+  ],
+  "nearby": [
+   "BLR-07",
+   "BLR-21"
+  ]
+ },
+ "BLR-21": {
+  "name": "Snug Demo Store, Whitefield",
+  "city": "Bengaluru",
+  "area": "Whitefield",
+  "lat": 12.9698,
+  "lng": 77.75,
+  "trial_rooms": [
+   "1",
+   "2",
+   "3",
+   "4",
+   "5"
+  ],
+  "nearby": [
+   "BLR-07",
+   "BLR-12"
+  ]
+ },
+ "MUM-01": {
+  "name": "Snug Demo Store, Bandra West",
+  "city": "Mumbai",
+  "area": "Bandra West",
+  "lat": 19.0596,
+  "lng": 72.8295,
+  "trial_rooms": [
+   "1",
+   "2",
+   "3",
+   "4",
+   "5",
+   "6"
+  ],
+  "nearby": [
+   "MUM-02",
+   "MUM-03"
+  ]
+ },
+ "MUM-02": {
+  "name": "Snug Demo Store, Lower Parel",
+  "city": "Mumbai",
+  "area": "Lower Parel",
+  "lat": 18.9977,
+  "lng": 72.8301,
+  "trial_rooms": [
+   "1",
+   "2",
+   "3",
+   "4",
+   "5",
+   "6",
+   "7",
+   "8"
+  ],
+  "nearby": [
+   "MUM-01",
+   "MUM-03"
+  ]
+ },
+ "MUM-03": {
+  "name": "Snug Demo Store, Andheri West",
+  "city": "Mumbai",
+  "area": "Andheri West",
+  "lat": 19.1364,
+  "lng": 72.8296,
+  "trial_rooms": [
+   "1",
+   "2",
+   "3",
+   "4",
+   "5"
+  ],
+  "nearby": [
+   "MUM-01",
+   "MUM-02"
+  ]
+ },
+ "DEL-01": {
+  "name": "Snug Demo Store, Connaught Place",
+  "city": "Delhi NCR",
+  "area": "Connaught Place",
+  "lat": 28.6315,
+  "lng": 77.2167,
+  "trial_rooms": [
+   "1",
+   "2",
+   "3",
+   "4",
+   "5",
+   "6"
+  ],
+  "nearby": [
+   "DEL-02",
+   "DEL-03"
+  ]
+ },
+ "DEL-02": {
+  "name": "Snug Demo Store, Saket",
+  "city": "Delhi NCR",
+  "area": "Saket",
+  "lat": 28.5245,
+  "lng": 77.2066,
+  "trial_rooms": [
+   "1",
+   "2",
+   "3",
+   "4",
+   "5",
+   "6",
+   "7",
+   "8"
+  ],
+  "nearby": [
+   "DEL-01",
+   "DEL-03"
+  ]
+ },
+ "DEL-03": {
+  "name": "Snug Demo Store, Gurugram Cyber Hub",
+  "city": "Delhi NCR",
+  "area": "Gurugram Cyber Hub",
+  "lat": 28.495,
+  "lng": 77.089,
+  "trial_rooms": [
+   "1",
+   "2",
+   "3",
+   "4",
+   "5",
+   "6"
+  ],
+  "nearby": [
+   "DEL-01",
+   "DEL-02"
+  ]
+ },
+ "CHN-01": {
+  "name": "Snug Demo Store, T. Nagar",
+  "city": "Chennai",
+  "area": "T. Nagar",
+  "lat": 13.0418,
+  "lng": 80.2341,
+  "trial_rooms": [
+   "1",
+   "2",
+   "3",
+   "4",
+   "5",
+   "6"
+  ],
+  "nearby": [
+   "CHN-02"
+  ]
+ },
+ "CHN-02": {
+  "name": "Snug Demo Store, Anna Nagar",
+  "city": "Chennai",
+  "area": "Anna Nagar",
+  "lat": 13.085,
+  "lng": 80.2101,
+  "trial_rooms": [
+   "1",
+   "2",
+   "3",
+   "4"
+  ],
+  "nearby": [
+   "CHN-01"
+  ]
+ },
+ "HYD-01": {
+  "name": "Snug Demo Store, Banjara Hills",
+  "city": "Hyderabad",
+  "area": "Banjara Hills",
+  "lat": 17.4156,
+  "lng": 78.4347,
+  "trial_rooms": [
+   "1",
+   "2",
+   "3",
+   "4",
+   "5",
+   "6"
+  ],
+  "nearby": [
+   "HYD-02"
+  ]
+ },
+ "HYD-02": {
+  "name": "Snug Demo Store, Gachibowli",
+  "city": "Hyderabad",
+  "area": "Gachibowli",
+  "lat": 17.4401,
+  "lng": 78.3489,
+  "trial_rooms": [
+   "1",
+   "2",
+   "3",
+   "4",
+   "5"
+  ],
+  "nearby": [
+   "HYD-01"
+  ]
+ },
+ "KOL-01": {
+  "name": "Snug Demo Store, Park Street",
+  "city": "Kolkata",
+  "area": "Park Street",
+  "lat": 22.5535,
+  "lng": 88.352,
+  "trial_rooms": [
+   "1",
+   "2",
+   "3",
+   "4",
+   "5"
+  ],
+  "nearby": [
+   "KOL-02"
+  ]
+ },
+ "KOL-02": {
+  "name": "Snug Demo Store, Salt Lake",
+  "city": "Kolkata",
+  "area": "Salt Lake",
+  "lat": 22.5867,
+  "lng": 88.4171,
+  "trial_rooms": [
+   "1",
+   "2",
+   "3",
+   "4"
+  ],
+  "nearby": [
+   "KOL-01"
+  ]
+ },
+ "PUN-01": {
+  "name": "Snug Demo Store, Koregaon Park",
+  "city": "Pune",
+  "area": "Koregaon Park",
+  "lat": 18.5362,
+  "lng": 73.894,
+  "trial_rooms": [
+   "1",
+   "2",
+   "3",
+   "4",
+   "5"
+  ],
+  "nearby": [
+   "PUN-02"
+  ]
+ },
+ "PUN-02": {
+  "name": "Snug Demo Store, Baner",
+  "city": "Pune",
+  "area": "Baner",
+  "lat": 18.559,
+  "lng": 73.7868,
+  "trial_rooms": [
+   "1",
+   "2",
+   "3",
+   "4"
+  ],
+  "nearby": [
+   "PUN-01"
+  ]
+ },
+ "AMD-01": {
+  "name": "Snug Demo Store, SG Highway",
+  "city": "Ahmedabad",
+  "area": "SG Highway",
+  "lat": 23.03,
+  "lng": 72.507,
+  "trial_rooms": [
+   "1",
+   "2",
+   "3",
+   "4",
+   "5"
+  ],
+  "nearby": []
+ }
+}
