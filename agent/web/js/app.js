@@ -603,7 +603,7 @@
     const w = window.SnugAuth?.welcome; if (!w) return; window.SnugAuth.welcome = null;
     const note = $("#welcomeNote");
     note.innerHTML = `🎉 <b>Welcome to Snug, ${esc(w.name)}!</b> Your account is created. ` +
-      (w.failed ? "We couldn't send the confirmation email right now." : `We've sent a confirmation email to <b>${esc(w.email)}</b> (check Spam if you don't see it).`);
+      (w.failed ? "" : `We've sent a welcome email to <b>${esc(w.email)}</b> (check Spam if you don't see it).`);
     note.classList.remove("hidden"); setTimeout(() => note.classList.add("hidden"), 15000);
   });
   $("#continueGuest").onclick = () => { store("snug_guest", true); renderAcct(); show("me"); };

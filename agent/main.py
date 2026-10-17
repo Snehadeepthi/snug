@@ -51,7 +51,7 @@ from fastapi import Request  # noqa: E402
 from fastapi.responses import JSONResponse  # noqa: E402
 
 LIMITS = {"/run_sse": int(os.environ.get("SNUG_AI_PER_MIN", "20")), "/run": int(os.environ.get("SNUG_AI_PER_MIN", "20")),
-          "/api/events": 120}
+          "/api/events": 120, "/api/welcome-email": 5}
 _hits: dict = defaultdict(deque)
 STARTED = _time.time()
 
@@ -158,6 +158,42 @@ class ScanEvent(BaseModel):
 @app.post("/api/events")
 def add_event(ev: ScanEvent):
     get_db().add_event(ev.model_dump(exclude_none=True))
+    return {"ok": True}
+
+
+class WelcomeReq(BaseModel):
+    id_token: str = Field(max_length=4096)
+    name: Optional[str] = Field(default=None, max_length=60)
+
+
+_welcomed: set = set()
+
+
+@app.post("/api/welcome-email")
+def welcome_email(req: WelcomeReq):
+    """Sends the 'Welcome to Snug' email to a just-created account. The Firebase ID token proves who is
+    asking, and the email only ever goes to that account's own address, once."""
+    from snug_core import mailer
+    if not mailer.configured():
+        raise HTTPException(503, "Welcome email is not configured on this server")
+    from google.auth.transport import requests as greq
+    from google.oauth2 import id_token
+    try:
+        claims = id_token.verify_firebase_token(req.id_token, greq.Request(), audience=os.environ.get("GOOGLE_CLOUD_PROJECT"))
+    except Exception:
+        raise HTTPException(401, "Invalid sign-in")
+    email, uid = claims.get("email"), claims.get("sub")
+    if not email or not uid:
+        raise HTTPException(400, "This account has no email address")
+    if uid in _welcomed:
+        return {"ok": True, "already_sent": True}
+    name = (claims.get("name") or req.name or email.split("@")[0]).strip()[:60]
+    try:
+        mailer.send(mailer.build_welcome(name, email))
+    except Exception as e:  # noqa: BLE001
+        print("welcome email failed:", type(e).__name__, e)
+        raise HTTPException(502, "Could not send the email right now")
+    _welcomed.add(uid)
     return {"ok": True}
 
 

@@ -116,10 +116,12 @@ async function emailGo() {
       state.user = summary(state.auth.currentUser); window.SnugAuth.user = state.user;
       // Account-created email, sent by Firebase (no mail server needed). Its subject/text is set in
       // Firebase console -> Authentication -> Templates -> Email address verification (see README).
+      // "Welcome to Snug" email, sent by our own server to this account's address (see snug_core/mailer.py).
       try {
-        await sendEmailVerification(cred.user, { url: new URL("./", location.href).href });
-        window.SnugAuth.welcome = { name, email };
-      } catch (err) { console.warn("Welcome email not sent:", err?.code); window.SnugAuth.welcome = { name, email, failed: true }; }
+        const token = await cred.user.getIdToken(true);
+        const r = await fetch("../api/welcome-email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id_token: token, name }) });
+        window.SnugAuth.welcome = { name, email, failed: !r.ok };
+      } catch (err) { console.warn("Welcome email not sent:", err); window.SnugAuth.welcome = { name, email, failed: true }; }
     } else {
       await signInWithEmailAndPassword(state.auth, email, pw);
     }
