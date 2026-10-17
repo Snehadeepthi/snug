@@ -55,12 +55,21 @@ function verifier() {
   if (!state.verifier) state.verifier = new RecaptchaVerifier(state.auth, "recaptcha", { size: "invisible" });
   return state.verifier;
 }
+// "Resend code" unlocks exactly one minute after a code is sent (the old countdown never re-enabled it).
+const RESEND_SECONDS = window.SNUG_RESEND_SECONDS || 60;
 function startResendCountdown() {
-  clearInterval(state.resendTimer); let n = 30; const b = $("#resendOtp"); b.disabled = true;
-  state.resendTimer = setInterval(() => { b.textContent = n > 0 ? `Resend in ${n--}s` : "Resend code"; if (n < 0) { clearInterval(state.resendTimer); b.disabled = false; } }, 1000);
+  clearInterval(state.resendTimer);
+  const b = $("#resendOtp"), until = Date.now() + RESEND_SECONDS * 1000;
+  const tick = () => {
+    const left = Math.ceil((until - Date.now()) / 1000);
+    if (left <= 0) { clearInterval(state.resendTimer); b.disabled = false; b.textContent = "Resend code"; return; }
+    b.disabled = true; b.textContent = `Resend code in ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
+  };
+  tick(); state.resendTimer = setInterval(tick, 500);
 }
-async function sendOtp() {
-  msg("#phoneErr", "");
+async function sendOtp(opts = {}) {
+  const errBox = opts.resend ? "#otpErr" : "#phoneErr";     // on resend, show errors on the code screen
+  msg("#phoneErr", ""); msg("#otpErr", "");
   const digits = $("#phoneNumber").value.replace(/\D/g, "").replace(/^0+/, "");
   if (digits.length < 6) { msg("#phoneErr", "Please enter your mobile number."); return; }
   const full = $("#phoneCountry").value + digits;
@@ -69,8 +78,9 @@ async function sendOtp() {
     state.confirmation = await signInWithPhoneNumber(state.auth, full, verifier());
     $("#otpSentTo").textContent = full; $("#phoneStep1").classList.add("hidden"); $("#phoneStep2").classList.remove("hidden");
     $("#otpCode").value = ""; $("#otpCode").focus(); startResendCountdown();
+    if (opts.resend) msg("#otpErr", "A new code is on its way.", true);
   } catch (e) {
-    msg("#phoneErr", friendly(e)); console.warn("Phone sign-in failed:", e?.code, e?.message);
+    msg(errBox, friendly(e)); console.warn("Phone sign-in failed:", e?.code, e?.message);
     try { state.verifier?.clear(); } catch {} state.verifier = null; $("#recaptcha").innerHTML = "";   // fresh security check on retry
   }
   busy(b, false, "Send OTP");
@@ -149,8 +159,11 @@ document.querySelectorAll("[data-auth-tab]").forEach((b) => b.addEventListener("
 }));
 document.querySelectorAll("[data-email-mode]").forEach((b) => b.addEventListener("click", () => setEmailMode(b.dataset.emailMode)));
 $("#sendOtp").addEventListener("click", sendOtp);
-$("#resendOtp").addEventListener("click", sendOtp);
-$("#changeNumber").addEventListener("click", () => { $("#phoneStep2").classList.add("hidden"); $("#phoneStep1").classList.remove("hidden"); });
+$("#resendOtp").addEventListener("click", () => {
+  try { state.verifier?.clear(); } catch {} state.verifier = null; $("#recaptcha").innerHTML = "";   // fresh security check
+  sendOtp({ resend: true });
+});
+$("#changeNumber").addEventListener("click", () => { clearInterval(state.resendTimer); msg("#otpErr", ""); $("#phoneStep2").classList.add("hidden"); $("#phoneStep1").classList.remove("hidden"); });
 $("#verifyOtp").addEventListener("click", verifyOtp);
 $("#otpCode").addEventListener("input", (e) => { if (e.target.value.replace(/\D/g, "").length === 6) verifyOtp(); });
 $("#saveName").addEventListener("click", saveName);
