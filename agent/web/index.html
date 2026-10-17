@@ -74,6 +74,7 @@
     <!-- ===== ME / FIT PASSPORT ===== -->
     <section id="view-me" class="view">
       <div class="acct" id="acctCard"></div>
+      <div class="status hidden" id="welcomeNote" style="margin:0 0 10px"></div>
       <div class="people hidden" id="peopleBar" aria-label="People on this phone"></div>
       <!-- no profile yet -->
       <div id="me-empty">
@@ -108,21 +109,21 @@
         </label>
         <label class="small" style="display:flex;gap:8px;align-items:center;margin:2px 0 8px"><input type="checkbox" id="scanShoes" style="width:auto"> I'm wearing shoes or heels</label>
         <button class="btn dark" id="openCam">📷 Use the live camera guide (recommended)</button>
-        <div class="or">or upload photos</div>
+        <div class="or">or add photos (take new ones or choose from your gallery)</div>
         <label class="photo-drop">
-          <input type="file" id="frontFile" accept="image/*" capture="environment">
+          <input type="file" id="frontFile" accept="image/*">
           <svg class="pose" viewBox="0 0 60 80" fill="none" stroke="#2B2140" stroke-width="3" stroke-linecap="round"><circle cx="30" cy="10" r="6"/><path d="M30 17v28M30 22l-14 16M30 22l14 16M30 45l-9 30M30 45l9 30"/></svg>
           <b>1. Front photo</b><br><span class="small muted">Face the camera, arms slightly away from your body</span>
           <div class="done hidden" id="frontOk">✓ Front photo ready</div>
         </label>
         <label class="photo-drop">
-          <input type="file" id="sideFile" accept="image/*" capture="environment">
+          <input type="file" id="sideFile" accept="image/*">
           <svg class="pose" viewBox="0 0 60 80" fill="none" stroke="#2B2140" stroke-width="3" stroke-linecap="round"><circle cx="30" cy="10" r="6"/><path d="M30 17v28M30 22l2 20M30 45l-2 30M30 45l3 30"/></svg>
           <b>2. Side photo</b> <span class="small muted">(recommended)</span><br><span class="small muted">Turn 90°, arms down</span>
           <div class="done hidden" id="sideOk">✓ Side photo ready</div>
         </label>
         <label class="photo-drop">
-          <input type="file" id="seatedFile" accept="image/*" capture="environment">
+          <input type="file" id="seatedFile" accept="image/*">
           <svg class="pose" viewBox="0 0 60 80" fill="none" stroke="#2B2140" stroke-width="3" stroke-linecap="round"><circle cx="24" cy="10" r="6"/><path d="M24 17v28M24 45h22M46 45v28M22 26l12 4M14 75h40M12 45v30"/></svg>
           <b>3. Sitting photo</b> <span class="small muted">(recommended: shirts, kurtas, jeans, trousers)</span><br><span class="small muted">Sit upright on a chair, side-on, arms crossed on your chest</span>
           <div class="done hidden" id="seatedOk">✓ Sitting photo ready</div>
@@ -151,7 +152,7 @@
         <div class="row" style="align-items:center;justify-content:space-between"><h2 id="reviewTitle" style="margin:0">Check your measurements</h2><div class="unitseg" role="group" aria-label="Units"><button type="button" data-unit="cm">cm</button><button type="button" data-unit="in">inches</button></div></div>
         <p class="lead small" id="reviewLead">Adjust anything that looks off. Saved only on this phone.</p>
         <div id="reviewWarn" class="warnlist hidden"></div>
-        <label class="field">Name of this person<input id="reviewName" maxlength="24" autocomplete="off" placeholder="e.g. Sneha, Mom, Arjun"></label>
+        <label class="field">Name of this person<input id="reviewName" maxlength="24" autocomplete="off" placeholder="e.g. Priya, Mom, Arjun"></label>
         <div class="grid2" id="reviewFields"></div>
         <div class="card soft hidden" id="calib">
           <b>📏 Calibrate with one tape measurement (recommended)</b>

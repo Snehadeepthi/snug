@@ -3,7 +3,7 @@
 // Needs web/firebase-config.json (see README). Without it, Snug runs in guest mode.
 import {
   initializeApp, getAuth, onAuthStateChanged, signOut, updateProfile, RecaptchaVerifier, signInWithPhoneNumber,
-  createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, setPersistence,
+  createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, sendEmailVerification, setPersistence,
   browserLocalPersistence, useDeviceLanguage,
 } from "../vendor/firebase-auth.bundle.mjs";
 
@@ -30,7 +30,8 @@ const ERRORS = {
   "auth/invalid-app-credential": "Security check failed. Reload the page and try again.",
   "auth/unauthorized-domain": "This web address isn't allowed to sign in yet (add it in Firebase → Authentication → Settings).",
 };
-const friendly = (e) => ERRORS[e?.code] || (e?.message || "Something went wrong.").replace("Firebase: ", "");
+// Friendly text plus Firebase's code in brackets, so a failed sign-in can be diagnosed from a screenshot.
+const friendly = (e) => (ERRORS[e?.code] || (e?.message || "Something went wrong.").replace("Firebase: ", "")) + (e?.code ? ` [${e.code}]` : "");
 function msg(id, text, ok = false) { const el = $(id); el.textContent = text || ""; el.classList.toggle("hidden", !text); el.classList.toggle("okmsg", ok); }
 function busy(btn, on, label) { btn.disabled = on; if (label) btn.textContent = on ? "Please wait…" : label; }
 const emit = (name) => window.dispatchEvent(new CustomEvent(name, { detail: { user: state.user } }));
@@ -69,8 +70,8 @@ async function sendOtp() {
     $("#otpSentTo").textContent = full; $("#phoneStep1").classList.add("hidden"); $("#phoneStep2").classList.remove("hidden");
     $("#otpCode").value = ""; $("#otpCode").focus(); startResendCountdown();
   } catch (e) {
-    msg("#phoneErr", friendly(e));
-    try { state.verifier?.clear(); } catch {} state.verifier = null;
+    msg("#phoneErr", friendly(e)); console.warn("Phone sign-in failed:", e?.code, e?.message);
+    try { state.verifier?.clear(); } catch {} state.verifier = null; $("#recaptcha").innerHTML = "";   // fresh security check on retry
   }
   busy(b, false, "Send OTP");
 }
@@ -113,6 +114,12 @@ async function emailGo() {
       const cred = await createUserWithEmailAndPassword(state.auth, email, pw);
       await updateProfile(cred.user, { displayName: name });
       state.user = summary(state.auth.currentUser); window.SnugAuth.user = state.user;
+      // Account-created email, sent by Firebase (no mail server needed). Its subject/text is set in
+      // Firebase console -> Authentication -> Templates -> Email address verification (see README).
+      try {
+        await sendEmailVerification(cred.user, { url: new URL("./", location.href).href });
+        window.SnugAuth.welcome = { name, email };
+      } catch (err) { console.warn("Welcome email not sent:", err?.code); window.SnugAuth.welcome = { name, email, failed: true }; }
     } else {
       await signInWithEmailAndPassword(state.auth, email, pw);
     }

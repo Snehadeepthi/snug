@@ -312,7 +312,9 @@ Without `web/firebase-config.json` the app runs in guest mode.
 2. Register a web app and copy its `firebaseConfig` into `agent/web/firebase-config.json` (template: `firebase-config.example.json`). This config is public by design.
 3. Under **Authentication → Sign-in method**, enable **Email/Password** and **Phone**. Add the test number `+91 9999900001` with code `123456`.
 4. Under **Authentication → Settings → Authorized domains**, add your `run.app` host.
-5. Redeploy.
+5. **Welcome email:** new email accounts get Firebase's account email automatically. To make it read as a welcome, open **Authentication → Templates → Email address verification**, set the sender name to `Snug` and the subject to `Welcome to Snug, %DISPLAY_NAME%! Your account is created` (Firebase fills in each person's own name), and edit the message if the console allows it.
+6. **Phone OTP not arriving?** Run `bash scripts/check_phone_auth.sh YOUR_PROJECT_ID` in Cloud Shell to see the real settings (phone enabled, SMS region policy, authorized domains). The app also shows Firebase's error code in brackets.
+7. Redeploy.
 
 </details>
 
