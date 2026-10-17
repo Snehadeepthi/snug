@@ -70,6 +70,23 @@ async def rate_limit(request: Request, call_next):
     return await call_next(request)
 
 
+# ---------- no stale app after a deploy ----------
+# App files (HTML/JS/CSS/JSON) must be re-checked with the server on every load ("no-cache" = revalidate via ETag,
+# so unchanged files still load fast). Only the large, versioned MediaPipe model files may be cached.
+@app.middleware("http")
+async def cache_headers(request: Request, call_next):
+    resp = await call_next(request)
+    path = request.url.path
+    if path.startswith("/app/"):
+        if "/vendor/mediapipe/" in path:
+            resp.headers["Cache-Control"] = "public, max-age=604800"
+        else:
+            resp.headers["Cache-Control"] = "no-cache, must-revalidate"
+    elif path.startswith("/api/"):
+        resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+
 @app.get("/api/status")
 def status():
     """Quick health/status for monitoring and evaluators (no secrets)."""

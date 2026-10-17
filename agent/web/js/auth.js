@@ -25,7 +25,9 @@ const ERRORS = {
   "auth/user-not-found": "No account with this email. Create one instead.",
   "auth/missing-password": "Please enter your password.",
   "auth/network-request-failed": "No internet connection. Please try again.",
-  "auth/operation-not-allowed": "This sign-in method isn't switched on yet for this app.",
+  "auth/operation-not-allowed": "We can't send an SMS to this number right now. Please sign in with Email, or continue as guest.",
+  "auth/billing-not-enabled": "SMS sign-in isn't available right now. Please sign in with Email, or continue as guest.",
+  "auth/invalid-app-credential": "Security check failed. Reload the page and try again.",
   "auth/unauthorized-domain": "This web address isn't allowed to sign in yet (add it in Firebase → Authentication → Settings).",
 };
 const friendly = (e) => ERRORS[e?.code] || (e?.message || "Something went wrong.").replace("Firebase: ", "");

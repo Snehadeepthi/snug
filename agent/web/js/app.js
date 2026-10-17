@@ -122,7 +122,8 @@
   document.addEventListener("click", (e) => { const b = e.target.closest("[data-unit]"); if (b) setUnit(b.dataset.unit); });
   const heightCm = (sel) => readCm($(sel));
   const heightOk = (cm) => cm >= 120 && cm <= 220;
-  const askHeight = () => alert(U.get() === "in" ? "Please enter your height in inches (e.g. 65 for 5 ft 5 in)." : "Please enter your height in cm.");
+  const askHeight = () => alert(U.get() === "in" ? "Please enter this person's real height in inches (e.g. 65 for 5 ft 5 in). Snug uses it as the ruler for every measurement."
+                                                 : "Please enter this person's real height in cm (e.g. 165). Snug uses it as the ruler for every measurement.");
 
   // ---------- Fit Passport ----------
   const FIELDS = [["height", "Height"], ["chest", "Chest / bust"], ["waist", "Waist"], ["hip", "Hip"], ["inseam", "Inseam"], ["shoulder", "Shoulder"],
@@ -180,7 +181,14 @@
   $("#reviewRetake").onclick = () => $("#startScan").click();
   function saveProfile(p) { if (S.adding || !S.profile) addPerson(p); else updateActive(p); }
 
-  $("#startScan").onclick = () => { S.frontFile = S.sideFile = S.seatedFile = null; $("#frontOk").classList.add("hidden"); $("#sideOk").classList.add("hidden"); $("#seatedOk").classList.add("hidden"); $("#scanStatus").classList.add("hidden"); meSub("#me-scan"); };
+  // Height is the ruler for the whole scan, so it is never carried over from someone else:
+  // re-scanning a person starts from THEIR saved height; a new person starts blank.
+  function prefillScanFor() {
+    const me = !S.adding && S.profile ? S.profile : null;
+    showCm($("#scanHeight"), me?.height ?? null); showCm($("#estHeight"), me?.height ?? null);
+    $("#scanGender").value = me?.gender || "women"; $("#estGender").value = me?.gender || "women";
+  }
+  $("#startScan").onclick = () => { prefillScanFor(); S.frontFile = S.sideFile = S.seatedFile = null; $("#frontOk").classList.add("hidden"); $("#sideOk").classList.add("hidden"); $("#seatedOk").classList.add("hidden"); $("#scanStatus").classList.add("hidden"); meSub("#me-scan"); };
   $("#rescan").onclick = $("#startScan").onclick;
   $("#cancelAdd").onclick = () => { S.adding = false; renderMe(); };
   $("#editProfile").onclick = () => review({ ...S.profile }, { title: `Edit ${S.profile.name}'s passport`, lead: "Rename, or correct any measurement. Saved only on this phone.", method: S.profile.method });
@@ -455,7 +463,7 @@
     $$("#estItems .est-item").forEach((r) => { refreshSizes(r); r.querySelectorAll("select").forEach((x) => { if (x.dataset.k !== "size" && x.dataset.k !== "feel") x.onchange = () => refreshSizes(r); }); });
     $("#estItems .est-item:nth-child(2) [data-k=kind]").value = "bottom"; refreshSizes($("#estItems .est-item:nth-child(2)"));
   }
-  $("#startEstimate").onclick = openEstimate;
+  $("#startEstimate").onclick = () => { prefillScanFor(); openEstimate(); };
   $("#estGender").onchange = openEstimate;
   $("#runEstimate").onclick = () => {
     const gender = $("#estGender").value, height = heightCm("#estHeight");
@@ -552,7 +560,18 @@
   let installEvt = null;
   window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installEvt = e; $("#installBtn").classList.remove("hidden"); });
   $("#installBtn").onclick = async () => { if (!installEvt) return; installEvt.prompt(); await installEvt.userChoice; installEvt = null; $("#installBtn").classList.add("hidden"); };
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then((r) => r.update()).catch(() => {});
+  if (window.caches) caches.keys().then((ks) => ks.forEach((k) => caches.delete(k))).catch(() => {});   // drop old offline copies
+
+  // Full reset: passports, settings, sign-in, cached files and the service worker, then a fresh reload.
+  $("#resetApp").onclick = async () => {
+    if (!confirm("Reset Snug on this phone? This deletes all Fit Passports saved here, signs you out and reloads the latest version.")) return;
+    try { await window.SnugAuth?.signOut?.(); } catch {}
+    try { Object.keys(localStorage).filter((k) => k.startsWith("snug_")).forEach((k) => localStorage.removeItem(k)); sessionStorage.clear(); } catch {}
+    try { if (window.caches) for (const k of await caches.keys()) await caches.delete(k); } catch {}
+    try { for (const r of (await navigator.serviceWorker?.getRegistrations?.()) || []) await r.unregister(); } catch {}
+    location.replace(location.pathname + "?fresh=" + Date.now());
+  };
 
   // ---------- account (sign in / sign up via js/auth.js) ----------
   let authSeen = false;
@@ -584,7 +603,7 @@
   renderAcct();
 
   // ---------- start ----------
-  ["#scanHeight", "#estHeight"].forEach((q) => showCm($(q), parseFloat($(q).value)));   // defaults are in cm
+  ["#scanHeight", "#estHeight"].forEach((q) => showCm($(q), null));   // no shared default height
   paintUnits();
   (async function init() {
     const c = await config();

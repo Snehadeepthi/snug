@@ -40,7 +40,7 @@
       <h1>Find your size in 10 seconds</h1>
       <p class="lead">Keep your clothes and shoes on. Stand on the mat facing the screen; Snug measures you with the camera and subtracts what your clothes add. Nothing is recorded.</p>
       <div class="grid2">
-        <label class="field">Your height<div class="row" style="gap:6px"><input id="h" type="number" step="0.5" value="165" inputmode="decimal" class="big"><select id="hu" class="big" style="flex:0 0 90px"><option value="cm">cm</option><option value="in">inches</option></select></div></label>
+        <label class="field">Your height<div class="row" style="gap:6px"><input id="h" type="number" step="0.5" inputmode="decimal" class="big" placeholder="e.g. 165"><select id="hu" class="big" style="flex:0 0 90px"><option value="cm">cm</option><option value="in">inches</option></select></div></label>
         <label class="field">Fit section<select id="g" class="big"><option value="women">Women</option><option value="men">Men</option></select></label>
       </div>
       <div class="grid2">
@@ -89,8 +89,8 @@
   let stream = null, step = "front", front = null, side = null, seatedImg = null, resetTimer = null;
   const params = new URLSearchParams(location.search);
   const U = Snug.units;
-  $("#hu").value = U.get(); if (U.get() === "in") $("#h").value = U.toU(165, "in");
-  $("#hu").onchange = (e) => { const old = U.get(), v = parseFloat($("#h").value); U.set(e.target.value); if (!isNaN(v)) $("#h").value = U.toU(U.fromU(v, old)); };
+  $("#hu").value = U.get(); $("#h").placeholder = U.get() === "in" ? "e.g. 65" : "e.g. 165";
+  $("#hu").onchange = (e) => { const old = U.get(), v = parseFloat($("#h").value); U.set(e.target.value); if (!isNaN(v)) $("#h").value = U.toU(U.fromU(v, old)); $("#h").placeholder = U.get() === "in" ? "e.g. 65" : "e.g. 165"; };
   const heightCm = () => U.fromU(parseFloat($("#h").value));
   const cfg = await j("/api/config"); let storeId = params.get("store") || localStorage.getItem("snug_kiosk_store") || cfg.default_store;
   $("#kStore").innerHTML = Snug.storeOptions(cfg.stores); $("#kStore").value = storeId;
@@ -108,7 +108,7 @@
     show("s2", s === "front" ? 2 : 3);
   }
   function reset() {
-    clearInterval(resetTimer); stop(); front = side = seatedImg = null; $("#kName").value = ""; $("#qr").innerHTML = ""; $("#meas").innerHTML = "";
+    clearInterval(resetTimer); stop(); front = side = seatedImg = null; $("#kName").value = ""; $("#h").value = ""; $("#qr").innerHTML = ""; $("#meas").innerHTML = "";
     $("#status").classList.add("hidden"); $("#shoot").disabled = false; show("s1", 1);
   }
 
@@ -128,7 +128,7 @@
   }
 
   $("#start").onclick = async () => {
-    const h = heightCm(); if (!(h >= 120 && h <= 220)) { alert(U.get() === "in" ? "Please enter your height in inches (e.g. 65)." : "Please enter your height in cm."); return; }
+    const h = heightCm(); if (!(h >= 120 && h <= 220)) { alert(U.get() === "in" ? "Please enter your real height in inches (e.g. 65). Snug uses it as the ruler for every measurement." : "Please enter your real height in cm (e.g. 165). Snug uses it as the ruler for every measurement."); return; }
     try {
       stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 1920 } }, audio: false });
       $("#v").srcObject = stream; await $("#v").play(); $("#idle").classList.add("hidden"); pose("front");
