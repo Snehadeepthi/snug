@@ -180,30 +180,42 @@
   $("#reviewRetake").onclick = () => $("#startScan").click();
   function saveProfile(p) { if (S.adding || !S.profile) addPerson(p); else updateActive(p); }
 
-  $("#startScan").onclick = () => { S.frontFile = S.sideFile = S.seatedFile = null; $("#frontOk").classList.add("hidden"); $("#sideOk").classList.add("hidden"); $("#seatedOk").classList.add("hidden"); $("#runMeasure").disabled = true; $("#scanStatus").classList.add("hidden"); meSub("#me-scan"); };
+  $("#startScan").onclick = () => { S.frontFile = S.sideFile = S.seatedFile = null; $("#frontOk").classList.add("hidden"); $("#sideOk").classList.add("hidden"); $("#seatedOk").classList.add("hidden"); $("#scanStatus").classList.add("hidden"); meSub("#me-scan"); };
   $("#rescan").onclick = $("#startScan").onclick;
   $("#cancelAdd").onclick = () => { S.adding = false; renderMe(); };
   $("#editProfile").onclick = () => review({ ...S.profile }, { title: `Edit ${S.profile.name}'s passport`, lead: "Rename, or correct any measurement. Saved only on this phone.", method: S.profile.method });
   $("#startManual").onclick = () => review({}, { title: "Enter your measurements", lead: "Use a tape measure, in cm or inches (switch above). Saved only on this phone.", method: "manual" });
   async function addDemo(key) { const p = (await config()).profiles[key]; if (p) addPerson({ ...p, method: "demo", saved_at: Date.now() }, "demo-" + key); }
   $$("[data-demo]").forEach((b) => b.onclick = () => addDemo(b.dataset.demo));
-  $("#frontFile").onchange = (e) => { S.frontFile = e.target.files[0] || null; $("#frontOk").classList.toggle("hidden", !S.frontFile); $("#runMeasure").disabled = !S.frontFile; };
+  $("#frontFile").onchange = (e) => { S.frontFile = e.target.files[0] || null; $("#frontOk").classList.toggle("hidden", !S.frontFile); if (S.frontFile) $("#scanStatus").classList.add("hidden"); };
   $("#sideFile").onchange = (e) => { S.sideFile = e.target.files[0] || null; $("#sideOk").classList.toggle("hidden", !S.sideFile); };
   $("#seatedFile").onchange = (e) => { S.seatedFile = e.target.files[0] || null; $("#seatedOk").classList.toggle("hidden", !S.seatedFile); };
+  // The button is always tappable: it explains what's missing instead of silently doing nothing,
+  // and shows live progress (the body model is ~20 MB the first time on a phone).
   $("#runMeasure").onclick = async () => {
-    const h = heightCm("#scanHeight"); const st = $("#scanStatus");
-    if (!heightOk(h)) { askHeight(); return; }
-    st.classList.remove("hidden"); $("#runMeasure").disabled = true;
+    if (S.measuring) return;
+    const h = heightCm("#scanHeight"); const st = $("#scanStatus"), btn = $("#runMeasure");
+    const say = (t) => { st.textContent = t; st.classList.remove("hidden"); st.scrollIntoView({ block: "center", behavior: "smooth" }); };
+    if (!heightOk(h)) { askHeight(); $("#scanHeight").focus(); return; }
+    if (!S.frontFile) { say("Add the front photo first: use the live camera guide above, or tap 1. Front photo."); return; }
+    S.measuring = true; btn.disabled = true; const t0 = Date.now();
+    say("Starting the body scan…");
+    const tick = setInterval(() => {
+      const sec = Math.round((Date.now() - t0) / 1000); btn.textContent = `Measuring… ${sec} s`;
+      if (sec === 25) st.textContent += " (The first scan downloads the body model, about 20 MB. Keep this screen open.)";
+    }, 1000);
     try {
-      for (let i = 0; i < 50 && !window.SnugMeasure; i++) await new Promise((r) => setTimeout(r, 200));
+      for (let i = 0; i < 50 && !window.SnugMeasure && !window.SnugMeasureLoadError; i++) await new Promise((r) => setTimeout(r, 200));
       if (!window.SnugMeasure) throw new Error("The body model could not load. Check your internet connection.");
       const m = await window.SnugMeasure.measureBody({ heightCm: h, frontFile: S.frontFile, sideFile: S.sideFile, seatedFile: S.seatedFile, onStatus: (t) => (st.textContent = t),
                                                        clothing: $("#scanClothes").value, shoes: $("#scanShoes").checked });
       S.frontFile = S.sideFile = S.seatedFile = null; $("#frontFile").value = ""; $("#sideFile").value = ""; $("#seatedFile").value = "";   // drop photo references
+      $("#frontOk").classList.add("hidden"); $("#sideOk").classList.add("hidden"); $("#seatedOk").classList.add("hidden"); st.classList.add("hidden");
       review({ ...m, gender: $("#scanGender").value }, { title: "Your measurements", lead: "Measured on your phone; photos already deleted. For the best accuracy, calibrate with one tape measurement below.", warnings: m.warnings, method: m.method, retake: m.quality_ok === false });
     } catch (err) {
-      st.textContent = "Couldn't measure: " + err.message + " You can retake the photos or enter measurements manually.";
-      $("#runMeasure").disabled = false;
+      say("Couldn't measure: " + err.message + " You can retake the photos, or go back and choose “Enter my measurements”.");
+    } finally {
+      clearInterval(tick); S.measuring = false; btn.disabled = false; btn.textContent = "Measure me";
     }
   };
   $("#toggleMeas").onclick = () => { const h = $("#ppMeas").classList.toggle("hidden"); $("#toggleMeas").textContent = h ? "Show measurements" : "Hide measurements"; };
@@ -514,7 +526,7 @@
     cv.getContext("2d").drawImage(v, 0, 0);
     const blob = await new Promise((r) => cv.toBlob(r, "image/jpeg", 0.92)); cv.width = cv.height = 0;
     $("#camShoot").disabled = false;
-    if (S.camStep === "front") { S.frontFile = blob; $("#frontOk").classList.remove("hidden"); $("#runMeasure").disabled = false; camStep("side"); }
+    if (S.camStep === "front") { S.frontFile = blob; $("#frontOk").classList.remove("hidden"); camStep("side"); }
     else if (S.camStep === "side") { S.sideFile = blob; $("#sideOk").classList.remove("hidden"); camStep("seated"); }
     else { S.seatedFile = blob; $("#seatedOk").classList.remove("hidden"); stopStream(); $("#camView").classList.add("hidden"); $("#runMeasure").click(); }
   };

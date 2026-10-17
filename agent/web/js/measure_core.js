@@ -89,6 +89,9 @@
       widths: { chest: chestW * s, waist: waistW * s, hip: hipW * s },
       shoulder: shoulderPx * s,
       inseam: (ankleY - crotchY) * s + 2,
+      // Dresses, kurtas and long tops hide where the legs split, so also estimate the crotch from the hip
+      // joints (it sits about 5% of body height below them) and use that when the outline can't show it.
+      inseamFromJoints: (ankleY - (hipY + 0.05 * pxH)) * s + 2,
       visibility: vis,
       torsoCm: t * s, waistFrac: (waistY - shY) / t, quality, armsTouch,
     };
@@ -135,7 +138,8 @@
       out[k] = Math.round((ramanujan(f.widths[k], d) - cloth[k]) * 2) / 2;      // minus what the clothes add
     }
     if (clothing === "loose") warnings.push("Loose clothes hide your shape, so these are estimates. For better accuracy, calibrate with one tape measurement below.");
-    out.inseam = Math.round(f.inseam * 2) / 2;
+    const inseamOk = f.inseam >= heightCm * 0.40 && f.inseam <= heightCm * 0.52;
+    out.inseam = Math.round((inseamOk && clothing !== "loose" ? f.inseam : f.inseamFromJoints) * 2) / 2;
     // Sitting posture: the waist widens slightly and pushes forward when you sit.
     out.seated_method = "estimated";
     if (seated) {

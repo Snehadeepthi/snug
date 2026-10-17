@@ -1,5 +1,5 @@
 // Snug service worker: network-first (always fresh when online), cached app shell as offline fallback.
-const CACHE = "snug-v9";
+const CACHE = "snug-v10";
 const SHELL = ["./", "index.html", "styles.css", "logo.svg", "icon-192.png", "js/common.js", "js/fit.js",
                "js/measure_core.js", "js/measure.js", "js/app.js", "js/auth.js", "vendor/html5-qrcode.min.js"];
 self.addEventListener("install", (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).catch(() => {})); self.skipWaiting(); });
