@@ -16,11 +16,20 @@
 
   const isBody = (m, x, y) => m.data[y * m.width + x] > 0.5;
 
-  function rowHasBody(m, y) { for (let x = 0; x < m.width; x++) if (isBody(m, x, y)) return true; return false; }
-  function topBottom(m) {
+  // A row counts as "body" only if enough pixels near the person are body, so specks of noise elsewhere
+  // in the photo (furniture, shadows, the floor edge) don't stretch the outline.
+  function rowHasBody(m, y, x0, x1, minPx) {
+    let c = 0;
+    for (let x = x0; x <= x1; x++) if (isBody(m, x, y) && ++c >= minPx) return true;
+    return false;
+  }
+  function topBottom(m, cxPx) {
+    const cx = cxPx == null ? m.width / 2 : cxPx, half = Math.round(m.width * 0.3);
+    const x0 = Math.max(0, Math.round(cx - half)), x1 = Math.min(m.width - 1, Math.round(cx + half));
+    const minPx = Math.max(2, Math.round(m.width * 0.006));
     let top = 0, bottom = m.height - 1;
-    while (top < m.height && !rowHasBody(m, top)) top++;
-    while (bottom > top && !rowHasBody(m, bottom)) bottom--;
+    while (top < m.height && !rowHasBody(m, top, x0, x1, minPx)) top++;
+    while (bottom > top && !rowHasBody(m, bottom, x0, x1, minPx)) bottom--;
     return [top, bottom];
   }
   // Left/right edge (px) of the continuous body run on row y that contains (or is nearest to) column cx.
@@ -41,11 +50,14 @@
   const avg = (a, b) => (a + b) / 2;
 
   function analyseFront(m, lm, heightCm) {
-    const [top, bottom] = topBottom(m);
+    const [top, bottom] = topBottom(m, ((lm[23].x + lm[24].x) / 2) * m.width);
     const pxH = bottom - top; if (pxH < m.height * 0.3) throw new Error("Body not fully visible: stand back so head and feet are in the photo.");
-    // Photo-quality checks: a cropped or too-distant body gives wrong measurements, so ask for a retake.
-    if (top <= 1 || bottom >= m.height - 2) throw new Error("Your head or feet are cut off in the front photo. Step back so there is a little space above your head and below your feet.");
+    // Photo-quality checks: warn (never block) so the shopper can retake if the photo looks cropped or distant.
     const quality = [];
+    const feetY = Math.max(...[27, 28, 29, 30, 31, 32].filter((i) => lm[i]).map((i) => lm[i].y));
+    const headCut = top <= 1 && lm[0] && lm[0].y < 0.07;
+    const feetCut = bottom >= m.height - 2 && feetY > 0.985;
+    if (headCut || feetCut) quality.push("Your head or feet may be cut off in the front photo, which affects accuracy. If the numbers look off, retake with a little space above your head and below your feet.");
     if (pxH < m.height * 0.5) quality.push("You look small in the front photo. Move a little closer (but keep head and feet in view) for better accuracy.");
     const s = heightCm / pxH;                                            // cm per pixel
     const P = (i) => ({ x: lm[i].x * m.width, y: lm[i].y * m.height, v: lm[i].visibility ?? 1 });
@@ -83,7 +95,7 @@
   }
 
   function analyseSide(m, lm, heightCm, levels) {
-    const [top, bottom] = topBottom(m); const pxH = bottom - top; const s = heightCm / pxH;
+    const [top, bottom] = topBottom(m, ((lm[23].x + lm[24].x) / 2) * m.width); const pxH = bottom - top; const s = heightCm / pxH;
     const cx = avg(lm[L.lHip].x, lm[L.rHip].x) * m.width;
     const depths = {};
     for (const k of ["chest", "waist", "hip"]) depths[k] = runAt(m, top + levels[k] * pxH, cx) * s;
@@ -145,7 +157,7 @@
     for (const [k, [lo, hi]] of Object.entries(PROP)) {
       const r = out[k] / heightCm; if (r < lo || r > hi) warnings.push(`${k} (${out[k]} cm) doesn't look right for a height of ${heightCm} cm. Check your height, or calibrate with a tape below.`);
     }
-    out.quality_ok = !f.armsTouch && f.visibility >= 0.5;
+    out.quality_ok = !f.armsTouch && f.visibility >= 0.5 && f.quality.length === 0;
     for (const [k, [lo, hi]] of Object.entries(RANGES)) {
       if (out[k] < lo || out[k] > hi) { warnings.push(`${k} (${out[k]} cm) looks unusual. Please check it.`); }
     }
