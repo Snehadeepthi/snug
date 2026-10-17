@@ -101,6 +101,7 @@
   const note = (pt) => pt.status === "tight_sitting" ? `${pt.pom} about ${(Math.abs(pt.delta_cm) / 2.54).toFixed(1)} in tight when sitting`
     : pt.status === "short_sitting" ? `rides up about ${(Math.abs(pt.delta_cm) / 2.54).toFixed(1)} in when sitting`
     : `${pt.pom} about ${(Math.abs(pt.delta_cm) / 2.54).toFixed(1)} in ${pt.status}`;
+  const top2 = (arr) => [...arr].sort((a, b) => Math.abs(b.delta_cm) - Math.abs(a.delta_cm)).slice(0, 2);   // keep headlines short
   const issues = (r) => [...r.points, ...(r.seated_points || [])].filter((x) => x.status !== "ok");
   const sortSizes = (sizes) => sizes.sort((a, b) => (SIZE_ORDER.indexOf(a) + 1 || 99) - (SIZE_ORDER.indexOf(b) + 1 || 99));
 
@@ -136,12 +137,20 @@
     const scanned = evaluateSize(p, g, scannedSize, pref);
     const issuesS = issues(scanned);
     let headline;
-    if (rec.verdict === "no_good_fit") headline = `This style may not fit well in any size. Closest is ${rec.size}.`;
+    if (rec.verdict === "no_good_fit") {
+      const order = sortSizes(Object.keys(g.sizes)), recIss = issues(evaluateSize(p, g, rec.size, pref));
+      const allTight = recIss.length && recIss.every((x) => x.status.startsWith("tight"));
+      headline = rec.size === order[order.length - 1] && allTight
+        ? `Even the largest size here (${rec.size}) will be ${top2(recIss).map(nice).join(" and ")}. This style runs small for you.`
+        : rec.size === order[0] && recIss.length && recIss.every((x) => x.status.startsWith("loose"))
+        ? `Even the smallest size here (${rec.size}) will be ${recIss.map(nice).join(" and ")}.`
+        : `This style may not fit well in any size. Closest is ${rec.size}.`;
+    }
     else if (rec.size === scannedSize && !issuesS.length) headline = `Size ${scannedSize} should fit you well.`;
     else if (rec.size === scannedSize) headline = `Size ${scannedSize} is your best size here, though it runs ${issuesS.map(nice).join(" and ")}.`;
     else if (issuesS.length && issuesS.every((x) => x.status.endsWith("_sitting")))
       headline = `Size ${scannedSize} fits standing, but when you sit it ${sitPhrase(issuesS, g.category)}. Grab size ${rec.size} instead.`;
-    else headline = `Size ${scannedSize} will be ${issuesS.length ? issuesS.map(nice).join(" and ") : "less comfortable"}. Grab size ${rec.size} instead.`;
+    else headline = `Size ${scannedSize} will be ${issuesS.length ? top2(issuesS).map(nice).join(" and ") : "less comfortable"}. Grab size ${rec.size} instead.`;
     return { headline, scanned_size: scannedSize, scanned_points: scanned.points, scanned_seated: scanned.seated_points, recommendation: rec,
              all_sizes: sortSizes(Object.keys(g.sizes)).map((s) => evaluateSize(p, g, s, pref)) };
   }

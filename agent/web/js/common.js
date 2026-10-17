@@ -99,5 +99,16 @@ window.Snug = (function () {
       list.map(([id, s]) => `<option value="${esc(id)}">${esc(s.area || s.name)}, ${esc(city)}</option>`).join("") + "</optgroup>").join("");
   }
 
-  return { API, esc, md, j, store, addMsg, createSession, runAgent, storeOptions };
+  // Units: measurements are always STORED in cm; the shopper can view and type them in cm or inches.
+  const units = {
+    get: () => store("snug_unit") || "cm",
+    set: (u) => store("snug_unit", u === "in" ? "in" : "cm"),
+    toU: (cm, u = units.get()) => (cm == null || cm === "" || isNaN(cm)) ? "" : u === "in" ? Math.round((cm / 2.54) * 4) / 4 : Math.round(cm * 2) / 2,
+    fromU: (v, u = units.get()) => (v == null || v === "" || isNaN(v)) ? null : u === "in" ? Math.round(v * 2.54 * 2) / 2 : Number(v),
+    fmt: (cm, u = units.get()) => u === "in" ? `${units.toU(cm, u)} in` : `${units.toU(cm, u)} cm`,
+    fmtHeight: (cm, u = units.get()) => { if (u !== "in") return `${Math.round(cm)} cm`; const t = Math.round(cm / 2.54); return `${Math.floor(t / 12)} ft ${t % 12} in`; },
+    step: (u = units.get()) => (u === "in" ? 0.25 : 0.5),
+  };
+
+  return { API, esc, md, j, store, addMsg, createSession, runAgent, storeOptions, units };
 })();

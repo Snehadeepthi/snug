@@ -38,10 +38,14 @@
 
     <section class="kstep on" id="s1">
       <h1>Find your size in 10 seconds</h1>
-      <p class="lead">Stand on the mat facing the screen. Snug measures you with the camera; nothing is recorded.</p>
+      <p class="lead">Keep your clothes and shoes on. Stand on the mat facing the screen; Snug measures you with the camera and subtracts what your clothes add. Nothing is recorded.</p>
       <div class="grid2">
-        <label class="field">Your height (cm)<input id="h" type="number" min="120" max="220" value="165" inputmode="decimal" class="big"></label>
+        <label class="field">Your height<div class="row" style="gap:6px"><input id="h" type="number" step="0.5" value="165" inputmode="decimal" class="big"><select id="hu" class="big" style="flex:0 0 90px"><option value="cm">cm</option><option value="in">inches</option></select></div></label>
         <label class="field">Fit section<select id="g" class="big"><option value="women">Women</option><option value="men">Men</option></select></label>
+      </div>
+      <div class="grid2">
+        <label class="field">What are you wearing?<select id="kClothes" class="big"><option value="fitted">Fitted clothes</option><option value="regular" selected>Regular clothes</option><option value="loose">Loose / layered (kurta, saree)</option></select></label>
+        <label class="field" style="display:flex;gap:8px;align-items:center;padding-top:26px"><input type="checkbox" id="kShoes" checked style="width:auto"> Wearing shoes</label>
       </div>
       <label class="field">Name for this passport (optional)<input id="kName" maxlength="24" autocomplete="off" placeholder="e.g. Sneha" class="big"></label>
       <button class="btn primary big" id="start">Start scan</button>
@@ -84,6 +88,10 @@
   };
   let stream = null, step = "front", front = null, side = null, seatedImg = null, resetTimer = null;
   const params = new URLSearchParams(location.search);
+  const U = Snug.units;
+  $("#hu").value = U.get(); if (U.get() === "in") $("#h").value = U.toU(165, "in");
+  $("#hu").onchange = (e) => { const old = U.get(), v = parseFloat($("#h").value); U.set(e.target.value); if (!isNaN(v)) $("#h").value = U.toU(U.fromU(v, old)); };
+  const heightCm = () => U.fromU(parseFloat($("#h").value));
   const cfg = await j("/api/config"); let storeId = params.get("store") || localStorage.getItem("snug_kiosk_store") || cfg.default_store;
   $("#kStore").innerHTML = Snug.storeOptions(cfg.stores); $("#kStore").value = storeId;
   $("#kStore").onchange = (e) => { storeId = e.target.value; try { localStorage.setItem("snug_kiosk_store", storeId); } catch {} };
@@ -112,7 +120,7 @@
     const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(p)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
     const url = new URL("./", location.href).href + "?store=" + encodeURIComponent(storeId) + "#passport=" + b64;
     const q = qrcode(0, "M"); q.addData(url); q.make(); $("#qr").innerHTML = q.createImgTag(6, 8);
-    $("#meas").innerHTML = [["chest", "Chest"], ["waist", "Waist"], ["hip", "Hip"], ["inseam", "Inseam"], ["seated_waist", "Waist sitting"], ["seated_hip", "Hip sitting"]].filter(([k]) => m[k]).map(([k, l]) => `<div style="background:var(--cream)">${l}<b>${m[k]} cm</b></div>`).join("");
+    $("#meas").innerHTML = [["chest", "Chest"], ["waist", "Waist"], ["hip", "Hip"], ["inseam", "Inseam"], ["seated_waist", "Waist sitting"], ["seated_hip", "Hip sitting"]].filter(([k]) => m[k]).map(([k, l]) => `<div style="background:var(--cream)">${l}<b>${U.fmt(m[k])}</b></div>`).join("");
     $("#warn").classList.toggle("hidden", !(m.warnings || []).length); $("#warn").innerHTML = (m.warnings || []).map(esc).join("<br>");
     show("s3", 4); stop();
     let left = 90; $("#resetMsg").textContent = `The kiosk clears itself in ${left} s.`;
@@ -120,7 +128,7 @@
   }
 
   $("#start").onclick = async () => {
-    const h = parseFloat($("#h").value); if (!(h >= 120 && h <= 220)) { alert("Please enter your height in cm."); return; }
+    const h = heightCm(); if (!(h >= 120 && h <= 220)) { alert(U.get() === "in" ? "Please enter your height in inches (e.g. 65)." : "Please enter your height in cm."); return; }
     try {
       stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 1920 } }, audio: false });
       $("#v").srcObject = stream; await $("#v").play(); $("#idle").classList.add("hidden"); pose("front");
@@ -145,7 +153,8 @@
     const st = $("#status"); st.classList.remove("hidden"); $("#shoot").disabled = true; $("#skipSeat").classList.add("hidden");
     try {
       for (let i = 0; i < 50 && !window.SnugMeasure; i++) await new Promise((r) => setTimeout(r, 200));
-      const m = await window.SnugMeasure.measureBody({ heightCm: parseFloat($("#h").value), frontFile: front, sideFile: side, seatedFile: seatedImg, onStatus: (t) => (st.textContent = t) });
+      const m = await window.SnugMeasure.measureBody({ heightCm: heightCm(), frontFile: front, sideFile: side, seatedFile: seatedImg, onStatus: (t) => (st.textContent = t),
+                                                       clothing: $("#kClothes").value, shoes: $("#kShoes").checked });
       front = side = seatedImg = null;                       // drop the photos
       handoff({ ...m, gender: $("#g").value });
     } catch (e) {

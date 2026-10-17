@@ -164,7 +164,8 @@ sequenceDiagram
 <details open>
 <summary><b>For shoppers</b></summary>
 
-- **3-photo body scan** with a live camera guide and 5-second timer, or upload photos
+- **3-photo body scan, fully clothed**, with a live camera guide and 5-second timer, or upload photos. Tell Snug what you're wearing (fitted, regular or loose) and whether you have shoes on, and it subtracts what the clothes add
+- **cm or inches**: switch units anywhere; measurements are stored in cm and converted exactly
 - **🪑 Sitting check** for jeans, trousers, shirts, blazers, kurtas and dresses: catches sizes that dig in, pull at the buttons or ride up when you sit
 - **No-photo options:** *"Tell Snug what you wear"* estimates from sizes you own, or type measurements in; plus a tape-measure accuracy check
 - **Several people on one phone:** passports for you, family and friends, and **Sizes for everyone** from a single tag scan
@@ -240,7 +241,7 @@ snug/
     │   └── *.html               ·  app, kiosk, staff, manager, tags, placards, judges
     ├── data/                    ← 22 garments, 18 stores, demo shoppers, simulated history
     ├── scripts/                 ← catalogue generator, Firestore seeding, MediaPipe bundling
-    ├── tests/                   ← 13 fit-engine tests (pytest)
+    ├── tests/                   ← 19 tests: fit engine + agent guardrails (pytest)
     └── Dockerfile · deploy.sh · requirements.txt
 ```
 
@@ -330,6 +331,20 @@ Without `web/firebase-config.json` the app runs in guest mode.
 </details>
 
 ---
+
+## Keeping the AI honest
+
+The fit engine decides sizes; the agent only acts on them. Guardrails make that hard to break:
+
+| Risk | Guardrail |
+|---|---|
+| Agent invents or misremembers a size | Holds and staff requests for a size the fit engine didn't recommend are **blocked in code**, unless the shopper explicitly chose that size |
+| Missing verdict for an item | The agent gets an error and asks the shopper to scan the tag; it never borrows another body's numbers |
+| Stale verdicts after editing a passport | The verdict on screen and the verdicts sent to the agent are recomputed whenever the person, measurements or fit preference change |
+| Creative answers | Low model temperature (0.2) and instructions to copy sizes exactly from tool results |
+| Inaccurate photo scan | Photo-quality checks (cropped body, arms touching the body, odd proportions) with a retake prompt, plus **one-tape calibration** that corrects all scanned measurements |
+
+These guardrails are covered by `tests/test_guardrails.py`.
 
 ## Built to stay up
 

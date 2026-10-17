@@ -14,6 +14,11 @@ STORES = json.loads((DATA / "stores.json").read_text())
 TOP_SIZES = ["S", "M", "L", "XL"]
 W_JEANS = ["26", "28", "30", "32", "34"]
 M_JEANS = ["28", "30", "32", "34", "36"]
+# Bigger sizes added later. They are appended after the originals with their own random streams,
+# so every existing barcode and stock number stays exactly the same.
+EXTRA_TOP = ["XXL"]
+EXTRA_W_JEANS = ["36"]
+EXTRA_M_JEANS = ["38"]
 
 # style_id, name, brand, gender, category, fit_type, fabric, stretch, price, occasions, colour,
 # base measurements for the first size, grading per size, extra tags
@@ -83,6 +88,12 @@ def sizes_for(gender, category):
     return TOP_SIZES
 
 
+def extra_sizes_for(gender, category):
+    if category in ("jeans", "trousers"):
+        return EXTRA_W_JEANS if gender == "women" else EXTRA_M_JEANS
+    return EXTRA_TOP
+
+
 def ean13(first12: str) -> str:
     """Valid EAN-13 from 12 digits. Prefix 20-29 is reserved for in-store use, so these never clash with real products."""
     total = sum(int(d) * (3 if i % 2 else 1) for i, d in enumerate(first12))
@@ -93,15 +104,21 @@ def build():
     out = []
     for idx, (sid, name, brand, gender, cat, fit, fabric, stretch, price, occ, colour, base, grade, tags) in enumerate(GARMENTS, start=1):
         labels = sizes_for(gender, cat)
-        gtins = {lab: ean13(f"2026{idx:03d}{j:02d}000") for j, lab in enumerate(labels)}
-        sizes = {lab: {k: round(v + grade.get(k, 0) * i, 1) for k, v in base.items()} for i, lab in enumerate(labels)}
+        extra = extra_sizes_for(gender, cat)
+        all_labels = labels + extra
+        gtins = {lab: ean13(f"2026{idx:03d}{j:02d}000") for j, lab in enumerate(all_labels)}
+        sizes = {lab: {k: round(v + grade.get(k, 0) * i, 1) for k, v in base.items()} for i, lab in enumerate(all_labels)}
         stock = {}
         for store in ("BLR-07", "BLR-12"):          # original demo stores: keep their stock exactly as before
             stock[store] = {lab: FIXED_STOCK.get((sid, lab, store), random.choice([0, 1, 2, 3, 4, 5])) for lab in labels}
+            for lab in extra:
+                stock[store][lab] = FIXED_STOCK.get((sid, lab, store), random.Random(f"{sid}-{store}-{lab}").choice([0, 1, 2, 3]))
         for store in STORES:                         # every other metro store gets its own repeatable stock
             if store not in stock:
                 rng = random.Random(f"{sid}-{store}")
                 stock[store] = {lab: FIXED_STOCK.get((sid, lab, store), rng.choice([0, 1, 2, 3, 4, 5])) for lab in labels}
+                for lab in extra:
+                    stock[store][lab] = FIXED_STOCK.get((sid, lab, store), rng.choice([0, 1, 2, 3]))
         out.append({
             "style_id": sid, "name": name, "brand": brand, "gender": gender, "category": cat,
             "fit_type": fit, "fabric": fabric, "stretch_pct": stretch, "price_inr": price,

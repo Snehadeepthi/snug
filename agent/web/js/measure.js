@@ -52,7 +52,7 @@ async function analyse(file, lmk) {
   } finally { wipe(canvas); }
 }
 
-export async function measureBody({ heightCm, frontFile, sideFile, seatedFile, onStatus }) {
+export async function measureBody({ heightCm, frontFile, sideFile, seatedFile, onStatus, clothing = "regular", shoes = false }) {
   const lmk = await getLandmarker(onStatus);
   onStatus?.("Finding your body outline (front)…");
   const front = await analyse(frontFile, lmk);
@@ -61,7 +61,7 @@ export async function measureBody({ heightCm, frontFile, sideFile, seatedFile, o
   let seated = null;
   if (seatedFile) { onStatus?.("Checking your sitting posture…"); try { seated = await analyse(seatedFile, lmk); } catch { seated = null; } }
   onStatus?.("Calculating measurements…");
-  const result = window.SnugMeasureCore.computeMeasurements({ heightCm, front, side, seated });
+  const result = window.SnugMeasureCore.computeMeasurements({ heightCm, front, side, seated, clothing, shoes });
   front.mask.data.fill(0); if (side) side.mask.data.fill(0); if (seated) seated.mask.data.fill(0);   // wipe silhouettes too
   return result;
 }

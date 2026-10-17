@@ -1,6 +1,6 @@
 // Snug shopper app: Fit Passport (on-device body scan) -> scan tag -> instant fit verdict -> AI agent acts.
 (function () {
-  const { j, esc, md, store, addMsg, createSession, runAgent } = window.Snug;
+  const { j, esc, md, store, addMsg, createSession, runAgent, units: U } = window.Snug;
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => document.querySelectorAll(s);
   const APP = "snug_agent";
@@ -16,17 +16,51 @@
   // ---------- people: several Fit Passports on one phone (me, family, friends) ----------
   // Kept only in this phone's storage, like a single passport. The AI never sees any measurements.
   const newId = () => "p" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
-  const P = (function load() {
-    const d = store("snug_profiles");
+  // Passports are kept per account on this phone ("guest" or a Firebase uid), so signing out or switching
+  // accounts never shows someone else's passports.
+  let ACCT = store("snug_acct") || "guest";
+  const pkey = (a) => "snug_profiles:" + a;
+  function loadProfiles(a) {
+    const d = store(pkey(a));
     if (d && Array.isArray(d.list)) return d;
-    const old = store("snug_profile"), out = { list: [], active: null };          // migrate the old single passport
-    if (old) { const id = newId(); out.list.push({ ...old, id, name: old.name || "Me" }); out.active = id; }
+    const out = { list: [], active: null };
+    if (a === ACCT) {                                                    // migrate older storage formats once
+      const legacy = store("snug_profiles");
+      if (legacy && Array.isArray(legacy.list)) { store("snug_profiles", null); return legacy; }
+      const old = store("snug_profile");
+      if (old) { const id = newId(); out.list.push({ ...old, id, name: old.name || "Me" }); out.active = id; store("snug_profile", null); }
+    }
     return out;
-  })();
-  function persist() { store("snug_profiles", P); store("snug_profile", null); }
+  }
+  let P = loadProfiles(ACCT);
+  function persist() { store(pkey(ACCT), P); store("snug_acct", ACCT); }
+  // Clear everything tied to the previous person: chat, scan, agent session, trial room.
+  function resetShopping() {
+    S.session = null; S.lastScan = null; S.greeted = false; S.room = null; store("snug_room", null);
+    const chat = document.getElementById("chat"); if (chat) chat.innerHTML = "";
+    if (S.config) chip();
+  }
+  function switchAccount(a) {
+    if (a === ACCT) return;
+    persist();
+    let next = loadProfiles(a);
+    if (a !== "guest" && !next.list.length) {                           // first sign-in on this phone: keep guest passports
+      const g = loadProfiles("guest"); if (g.list.length) { next = g; store(pkey("guest"), null); }
+    }
+    ACCT = a; P = next; syncActive(); persist();
+    S.adding = false; resetShopping(); renderMe();
+  }
   function syncActive() { S.profile = P.list.find((x) => x.id === P.active) || P.list[0] || null; P.active = S.profile?.id || null; }
   syncActive(); persist();
-  function activate(id) { P.active = id; syncActive(); persist(); S.session = null; renderMe(); }
+  function activate(id) { P.active = id; syncActive(); persist(); S.session = null; refreshScan(); renderMe(); }
+  // Re-run the fit engine for the last scanned tag whenever the person, their measurements or fit preference change,
+  // so the verdict on screen and the verdicts sent to the agent always come from the current passport.
+  function refreshScan() {
+    if (!S.lastScan) return;
+    if (!S.profile) { S.lastScan = null; return; }
+    const { g, v } = S.lastScan; S.lastScan.v = SnugFit.verdictForScan(S.profile, g, v.scanned_size, S.pref);
+    renderResult();
+  }
   function addPerson(p, id) {                                    // add (or replace by id) and switch to it
     id ||= newId(); const i = P.list.findIndex((x) => x.id === id);
     const rec = { ...p, id, name: (p.name || "").trim().slice(0, 24) || (P.list.length ? "Person " + (P.list.length + 1) : "Me") };
@@ -34,7 +68,7 @@
     S.adding = false; activate(id);
   }
   function updateActive(p) { if (!S.profile) return addPerson(p); addPerson({ ...S.profile, ...p, name: p.name || S.profile.name }, S.profile.id); }
-  function removeActive() { P.list = P.list.filter((x) => x.id !== P.active); P.active = P.list[0]?.id || null; syncActive(); persist(); S.session = null; renderMe(); }
+  function removeActive() { P.list = P.list.filter((x) => x.id !== P.active); P.active = P.list[0]?.id || null; syncActive(); persist(); S.session = null; refreshScan(); renderMe(); }
   const initial = (n) => esc((n || "?").trim()[0]?.toUpperCase() || "?");
   function renderPeople() {
     const bar = $("#peopleBar");
@@ -65,6 +99,31 @@
     if (e.target.closest("[data-back]")) { renderMe(); }
   });
 
+  // ---------- cm / inches ----------
+  // Values are stored in cm. Switching converts whatever is typed in the open form, so nothing is lost.
+  const UNIT_INPUTS = () => ["#scanHeight", "#estHeight", "#calibVal", "#accVal"].map((q) => $(q)).concat([...$$("#reviewFields input")]);
+  function paintUnits() {
+    const u = U.get();
+    $$("[data-unit]").forEach((b) => b.classList.toggle("on", b.dataset.unit === u));
+    $$(".u").forEach((x) => (x.textContent = u === "in" ? "in" : "cm"));
+    UNIT_INPUTS().forEach((i) => i && (i.step = U.step(u)));
+  }
+  // Exact cm behind an input: kept while the shopper hasn't retyped it, so switching units never drifts.
+  function readCm(i, u = U.get()) {
+    if (!i || i.value === "") return null;
+    return i.dataset.cm && i.value === i.dataset.shown ? Number(i.dataset.cm) : U.fromU(parseFloat(i.value), u);
+  }
+  function showCm(i, cm, u = U.get()) { if (!i) return; i.value = cm == null ? "" : U.toU(cm, u); i.dataset.cm = cm ?? ""; i.dataset.shown = i.value; }
+  function setUnit(u) {
+    const old = U.get(); if (u === old) return;
+    UNIT_INPUTS().forEach((i) => { if (i && i.value !== "") showCm(i, readCm(i, old), u); });
+    U.set(u); paintUnits(); if (S.profile && !S.adding) renderMe();
+  }
+  document.addEventListener("click", (e) => { const b = e.target.closest("[data-unit]"); if (b) setUnit(b.dataset.unit); });
+  const heightCm = (sel) => readCm($(sel));
+  const heightOk = (cm) => cm >= 120 && cm <= 220;
+  const askHeight = () => alert(U.get() === "in" ? "Please enter your height in inches (e.g. 65 for 5 ft 5 in)." : "Please enter your height in cm.");
+
   // ---------- Fit Passport ----------
   const FIELDS = [["height", "Height"], ["chest", "Chest / bust"], ["waist", "Waist"], ["hip", "Hip"], ["inseam", "Inseam"], ["shoulder", "Shoulder"],
                   ["seated_waist", "Waist (sitting)"], ["seated_hip", "Hip (sitting)"]];
@@ -81,47 +140,67 @@
     }
     meSub("#me-ready");
     $("#ppName").textContent = `${S.profile.name}'s passport`;
-    $("#ppMethod").textContent = { two_photos: "2-photo scan", front_only: "1-photo scan", manual: "entered manually", demo: "demo profile", estimated: "estimated from your sizes", kiosk: "in-store kiosk scan" }[S.profile.method] || "";
-    $("#ppMeas").innerHTML = FIELDS.filter(([k]) => S.profile[k]).map(([k, l]) => `<div>${l}<b>${S.profile[k]} cm</b></div>`).join("");
+    $("#ppMethod").textContent = ({ two_photos: "photo scan", front_only: "1-photo scan", manual: "entered manually", demo: "demo profile", estimated: "estimated from your sizes", kiosk: "in-store kiosk scan" }[S.profile.method] || "") + (S.profile.calibrated ? " · tape-calibrated" : "");
+    $("#ppMeas").innerHTML = FIELDS.filter(([k]) => S.profile[k]).map(([k, l]) => `<div>${l}<b>${k === "height" ? U.fmtHeight(S.profile[k]) : U.fmt(S.profile[k])}</b></div>`).join("");
+    paintUnits();
     $("#prefSelect").value = S.pref;
   }
-  function review(values, { title, lead, warnings = [], method }) {
+  function review(values, { title, lead, warnings = [], method, retake = false }) {
     meSub("#me-review");
+    const scanned = ["two_photos", "front_only", "kiosk"].includes(method);
+    $("#calib").classList.toggle("hidden", !scanned); $("#calibMsg").textContent = ""; $("#calibVal").value = ""; $("#calib").dataset.done = "0";
+    $("#reviewRetake").classList.toggle("hidden", !retake);
     $("#reviewTitle").textContent = title; $("#reviewLead").textContent = lead;
     $("#reviewWarn").classList.toggle("hidden", !warnings.length); $("#reviewWarn").innerHTML = warnings.map(esc).join("<br>");
-    $("#reviewFields").innerHTML = FIELDS.map(([k, l]) => `<label class="field">${l} (cm)<input type="number" step="0.5" name="${k}" value="${values[k] ?? ""}" inputmode="decimal"></label>`).join("");
+    $("#reviewFields").innerHTML = FIELDS.map(([k, l]) => `<label class="field"><span>${l} (<span class="u">cm</span>)</span><input type="number" step="0.5" name="${k}" inputmode="decimal"></label>`).join("");
+    $$("#reviewFields input").forEach((i) => showCm(i, values[i.name] ?? null));
+    paintUnits();
     $("#reviewGender").value = values.gender || "women";
     $("#reviewName").value = values.name ?? (S.adding || !S.profile ? (P.list.length ? "" : (window.SnugAuth?.user?.name || "Me")) : S.profile.name);
     $("#saveProfile").textContent = S.adding || !S.profile ? "Save Fit Passport" : `Save ${S.profile.name}'s passport`;
     $("#saveProfile").onclick = () => {
       const p = { method, gender: $("#reviewGender").value, saved_at: Date.now(), name: $("#reviewName").value };
-      $$("#reviewFields input").forEach((i) => { if (i.value) p[i.name] = parseFloat(i.value); });
+      if ($("#calib").dataset.done === "1") p.calibrated = true;
+      $$("#reviewFields input").forEach((i) => { const v = readCm(i); if (v != null) p[i.name] = v; });
       if (!p.height || !p.chest || !p.waist) { alert("Height, chest and waist are needed."); return; }
       saveProfile(p);
     };
   }
+  // One tape measurement scales the other scanned circumferences by the same ratio (scan error is mostly proportional).
+  $("#calibGo").onclick = () => {
+    const key = $("#calibPom").value, tape = readCm($("#calibVal"));
+    const cur = {}; $$("#reviewFields input").forEach((i) => { const v = readCm(i); if (v != null) cur[i.name] = v; });
+    const r = window.SnugMeasureCore.calibrate(cur, key, tape);
+    if (!r) { $("#calibMsg").textContent = "Enter your tape value."; return; }
+    $$("#reviewFields input").forEach((i) => { if (r.profile[i.name] != null) showCm(i, r.profile[i.name]); });
+    const pct = Math.round((r.ratio - 1) * 1000) / 10; $("#calib").dataset.done = "1";
+    $("#calibMsg").textContent = `Done: the scan was ${Math.abs(pct)}% ${pct > 0 ? "small" : "big"}, so the other measurements were adjusted by the same amount.` +
+      (r.clamped ? " That's a large difference, so please retake the photos in fitted clothes." : "");
+  };
+  $("#reviewRetake").onclick = () => $("#startScan").click();
   function saveProfile(p) { if (S.adding || !S.profile) addPerson(p); else updateActive(p); }
 
   $("#startScan").onclick = () => { S.frontFile = S.sideFile = S.seatedFile = null; $("#frontOk").classList.add("hidden"); $("#sideOk").classList.add("hidden"); $("#seatedOk").classList.add("hidden"); $("#runMeasure").disabled = true; $("#scanStatus").classList.add("hidden"); meSub("#me-scan"); };
   $("#rescan").onclick = $("#startScan").onclick;
   $("#cancelAdd").onclick = () => { S.adding = false; renderMe(); };
   $("#editProfile").onclick = () => review({ ...S.profile }, { title: `Edit ${S.profile.name}'s passport`, lead: "Rename, or correct any measurement. Saved only on this phone.", method: S.profile.method });
-  $("#startManual").onclick = () => review({}, { title: "Enter your measurements", lead: "Use a tape measure, in cm. Saved only on this phone.", method: "manual" });
+  $("#startManual").onclick = () => review({}, { title: "Enter your measurements", lead: "Use a tape measure, in cm or inches (switch above). Saved only on this phone.", method: "manual" });
   async function addDemo(key) { const p = (await config()).profiles[key]; if (p) addPerson({ ...p, method: "demo", saved_at: Date.now() }, "demo-" + key); }
   $$("[data-demo]").forEach((b) => b.onclick = () => addDemo(b.dataset.demo));
   $("#frontFile").onchange = (e) => { S.frontFile = e.target.files[0] || null; $("#frontOk").classList.toggle("hidden", !S.frontFile); $("#runMeasure").disabled = !S.frontFile; };
   $("#sideFile").onchange = (e) => { S.sideFile = e.target.files[0] || null; $("#sideOk").classList.toggle("hidden", !S.sideFile); };
   $("#seatedFile").onchange = (e) => { S.seatedFile = e.target.files[0] || null; $("#seatedOk").classList.toggle("hidden", !S.seatedFile); };
   $("#runMeasure").onclick = async () => {
-    const h = parseFloat($("#scanHeight").value); const st = $("#scanStatus");
-    if (!(h >= 120 && h <= 220)) { alert("Please enter your height in cm."); return; }
+    const h = heightCm("#scanHeight"); const st = $("#scanStatus");
+    if (!heightOk(h)) { askHeight(); return; }
     st.classList.remove("hidden"); $("#runMeasure").disabled = true;
     try {
       for (let i = 0; i < 50 && !window.SnugMeasure; i++) await new Promise((r) => setTimeout(r, 200));
       if (!window.SnugMeasure) throw new Error("The body model could not load. Check your internet connection.");
-      const m = await window.SnugMeasure.measureBody({ heightCm: h, frontFile: S.frontFile, sideFile: S.sideFile, seatedFile: S.seatedFile, onStatus: (t) => (st.textContent = t) });
+      const m = await window.SnugMeasure.measureBody({ heightCm: h, frontFile: S.frontFile, sideFile: S.sideFile, seatedFile: S.seatedFile, onStatus: (t) => (st.textContent = t),
+                                                       clothing: $("#scanClothes").value, shoes: $("#scanShoes").checked });
       S.frontFile = S.sideFile = S.seatedFile = null; $("#frontFile").value = ""; $("#sideFile").value = ""; $("#seatedFile").value = "";   // drop photo references
-      review({ ...m, gender: $("#scanGender").value }, { title: "Your measurements", lead: "Measured on your phone; photos already deleted. Adjust anything that looks off.", warnings: m.warnings, method: m.method });
+      review({ ...m, gender: $("#scanGender").value }, { title: "Your measurements", lead: "Measured on your phone; photos already deleted. For the best accuracy, calibrate with one tape measurement below.", warnings: m.warnings, method: m.method, retake: m.quality_ok === false });
     } catch (err) {
       st.textContent = "Couldn't measure: " + err.message + " You can retake the photos or enter measurements manually.";
       $("#runMeasure").disabled = false;
@@ -129,7 +208,7 @@
   };
   $("#toggleMeas").onclick = () => { const h = $("#ppMeas").classList.toggle("hidden"); $("#toggleMeas").textContent = h ? "Show measurements" : "Hide measurements"; };
   $("#deleteProfile").onclick = () => { if (confirm(`Delete ${S.profile.name}'s Fit Passport from this phone?`)) removeActive(); };
-  $("#prefSelect").onchange = (e) => { S.pref = e.target.value; store("snug_pref", S.pref); };
+  $("#prefSelect").onchange = (e) => { S.pref = e.target.value; store("snug_pref", S.pref); S.session = null; refreshScan(); };
 
   // ---------- store ----------
   async function config() { return (S.config ||= await j("/api/config")); }
@@ -267,7 +346,6 @@
   $("#rFamily").onclick = (e) => {
     const b = e.target.closest("[data-fam]"); if (!b || b.dataset.fam === P.active || !S.lastScan) return;
     activate(b.dataset.fam);
-    const { g, v } = S.lastScan; S.lastScan.v = SnugFit.verdictForScan(S.profile, g, v.scanned_size, S.pref); renderResult();
   };
   $("#rAsk").onclick = () => { show("ask"); $("#chatInput").focus(); };
 
@@ -368,7 +446,8 @@
   $("#startEstimate").onclick = openEstimate;
   $("#estGender").onchange = openEstimate;
   $("#runEstimate").onclick = () => {
-    const gender = $("#estGender").value, height = parseFloat($("#estHeight").value);
+    const gender = $("#estGender").value, height = heightCm("#estHeight");
+    if (!heightOk(height)) { askHeight(); return; }
     const acc = {}; const add = (k, v) => { (acc[k] ||= []).push(v); };
     $$("#estItems .est-item").forEach((row) => {
       const kind = row.querySelector('[data-k=kind]').value, brand = row.querySelector('[data-k=brand]').value;
@@ -420,7 +499,7 @@
     $("#camSkip").classList.toggle("hidden", step !== "seated");
   }
   $("#openCam").onclick = async () => {
-    const h = parseFloat($("#scanHeight").value); if (!(h >= 120 && h <= 220)) { alert("Please enter your height first."); return; }
+    const h = heightCm("#scanHeight"); if (!heightOk(h)) { askHeight(); return; }
     $("#camView").classList.remove("hidden"); camStep("front");
     try { await startStream(); } catch (e) { $("#camView").classList.add("hidden"); alert("Camera not available: " + (e.message || e) + ". Upload photos instead."); }
   };
@@ -443,13 +522,16 @@
   // ---------- accuracy check against a tape measure ----------
   $("#openAccuracy").onclick = () => $("#accuracy").classList.toggle("hidden");
   $("#accGo").onclick = () => {
-    const pom = $("#accPom").value, tape = parseFloat($("#accVal").value), scan = S.profile?.[pom];
+    const pom = $("#accPom").value, tape = readCm($("#accVal")), scan = S.profile?.[pom];
     if (!(tape > 0) || !scan) { $("#accOut").classList.remove("hidden"); $("#accOut").textContent = "Enter a tape value (and make sure your passport has this measurement)."; return; }
     const diff = Math.round((scan - tape) * 10) / 10, pct = Math.round((Math.abs(diff) / tape) * 1000) / 10;
     $("#accOut").classList.remove("hidden");
-    $("#accOut").innerHTML = `Snug: <b>${scan} cm</b> · Tape: <b>${tape} cm</b> · Difference <b>${diff > 0 ? "+" : ""}${diff} cm (${pct}%)</b>. ` +
+    $("#accOut").innerHTML = `Snug: <b>${U.fmt(scan)}</b> · Tape: <b>${U.fmt(tape)}</b> · Difference <b>${diff > 0 ? "+" : diff < 0 ? "−" : ""}${U.fmt(Math.abs(diff))} (${pct}%)</b>. ` +
       (pct <= 3 ? "Great, that's very close." : pct <= 6 ? "Close. Using your tape value will make fits more precise." : "That's a big gap; try re-scanning in fitted clothes, or use your tape value.");
     $("#accUse").classList.remove("hidden"); $("#accUse").onclick = () => { updateActive({ [pom]: tape }); $("#accuracy").classList.add("hidden"); };
+    const canScale = ["chest", "waist", "hip"].includes(pom);
+    $("#accScale").classList.toggle("hidden", !canScale);
+    $("#accScale").onclick = () => { const r = window.SnugMeasureCore.calibrate(S.profile, pom, tape); if (r) updateActive({ ...r.profile, calibrated: true }); $("#accuracy").classList.add("hidden"); };
     fetch(window.Snug.API + "/api/events", { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ type: "accuracy_check", store_id: S.storeId, error_pct: pct }) }).catch(() => {});
   };
@@ -472,7 +554,10 @@
   }
   window.addEventListener("snug-auth-changed", () => {
     const u = window.SnugAuth?.user;
-    if (u) { const id = "user-" + u.uid; if (S.uid !== id) { S.uid = id; S.session = null; } }   // agent sessions follow the account
+    if (u) { const id = "user-" + u.uid; if (S.uid !== id) { S.uid = id; S.session = null; } switchAccount(u.uid); }   // agent sessions follow the account
+    else if (window.SnugAuth?.ready && ACCT !== "guest") {              // signed out: new anonymous id, guest passports only
+      S.uid = "shopper-" + Math.random().toString(36).slice(2, 9); store("snug_uid", S.uid); switchAccount("guest");
+    }
     if (u?.name) { const me = P.list.find((x) => x.name === "Me"); if (me) { me.name = u.name.split(" ")[0].slice(0, 24); persist(); syncActive(); renderMe(); } }
     renderAcct();
     if (!authSeen) {
@@ -487,6 +572,8 @@
   renderAcct();
 
   // ---------- start ----------
+  ["#scanHeight", "#estHeight"].forEach((q) => showCm($(q), parseFloat($(q).value)));   // defaults are in cm
+  paintUnits();
   (async function init() {
     const c = await config();
     $("#storeSelect").innerHTML = window.Snug.storeOptions(c.stores);

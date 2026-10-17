@@ -201,3 +201,8 @@ table.cat td, table.cat th { border-bottom: 1px solid var(--line); padding: 6px 
 .famrow:first-of-type { margin-top: 8px; }
 .famrow > span:nth-child(2) { flex: 1; min-width: 0; }
 .famrow.on b { color: var(--coral-dark); }
+
+/* cm / inches switch */
+.unitseg { display: inline-flex; background: var(--bg); border-radius: 999px; padding: 3px; flex: 0 0 auto; }
+.unitseg button { border: none; background: none; padding: 5px 12px; border-radius: 999px; font: inherit; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.unitseg button.on { background: var(--plum); color: #fff; }

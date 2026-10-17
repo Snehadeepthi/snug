@@ -93,22 +93,20 @@ def get_fit_verdicts(style_ids: list[str], tool_context: ToolContext) -> dict:
     Returns, per style: verdict ("fits" or "no_good_fit"), best size, confidence and plain-language notes.
     """
     phone = tool_context.state.get("fit_verdicts") or {}
-    out, missing = {}, []
-    for sid in style_ids:
-        if sid in phone:
-            out[sid] = phone[sid]
-        else:
-            missing.append(sid)
-    source = "phone"
-    if missing:
-        # Fallback for demos without a phone profile (e.g. ADK dev UI): compute from a demo profile.
+    out = {}
+    if phone:
+        # Only ever use the shopper's own phone verdicts. Never fill gaps from another body.
+        for sid in style_ids:
+            out[sid] = phone.get(sid) or {"error": "No fit verdict from the shopper's phone for this item. "
+                                                   "Ask them to scan its tag. Do not guess a size."}
+        source = "phone"
+    else:
+        # No phone attached (ADK dev UI only): use a clearly labelled demo profile.
         profile = tool_context.state.get("profile") or PROFILES["ananya"]
-        source = "phone" if not out else "phone+demo_fallback"
-        if not phone:
-            source = "demo_profile"
-        for sid in missing:
+        for sid in style_ids:
             g = get_db().get_garment(sid)
             out[sid] = {"name": g["name"], **recommend(profile, g)} if g else {"error": "unknown style"}
+        source = "demo_profile"
     res = {"computed_on": source, "verdicts": out}
     if tool_context.state.get("shopping_for"):
         res["for_person"] = tool_context.state["shopping_for"]   # which saved passport on the phone these are for
@@ -139,11 +137,34 @@ def check_stock(style_id: str, size: str, tool_context: ToolContext) -> dict:
             "nearby_stores_with_size": nearby}
 
 
-def reserve_trial_room(items: list[str], tool_context: ToolContext) -> dict:
+def _verdict_for(tool_context: ToolContext, style_id: str) -> Optional[dict]:
+    """The fit engine's verdict for this shopper and garment (phone first; demo profile only without a phone)."""
+    phone = tool_context.state.get("fit_verdicts") or {}
+    if phone:
+        return phone.get(style_id)
+    g = get_db().get_garment(style_id)
+    return recommend(tool_context.state.get("profile") or PROFILES["ananya"], g) if g else None
+
+
+def _size_guard(tool_context: ToolContext, style_id: str, size: str, shopper_chose_size: bool) -> Optional[str]:
+    """Deterministic guardrail: the agent may only act on the size the fit engine recommended,
+    unless the shopper explicitly asked for a different size. Returns a problem message or None."""
+    v = _verdict_for(tool_context, style_id)
+    if not v or not v.get("size") or shopper_chose_size:
+        return None
+    if str(size).strip().upper() != str(v["size"]).strip().upper():
+        return (f"Blocked: the fit engine recommends size {v['size']} for this shopper ({style_id}), not {size}. "
+                f"Use size {v['size']}. Only set shopper_chose_size=true if the shopper explicitly asked for {size}.")
+    return None
+
+
+def reserve_trial_room(items: list[str], tool_context: ToolContext, shopper_chose_size: bool = False) -> dict:
     """Hold items in a trial room for the shopper. Only call AFTER the shopper confirms.
 
     Args:
-      items: list of "STYLE_ID:SIZE" strings, e.g. ["W01:M", "W03:M"]. Each must be in stock.
+      items: list of "STYLE_ID:SIZE" strings, e.g. ["W01:M", "W03:M"]. Each must be in stock, and the size
+        must be the one from get_fit_verdicts.
+      shopper_chose_size: true ONLY if the shopper explicitly asked for a size different from the verdict.
     """
     db, store = get_db(), _store(tool_context)
     held, problems = [], []
@@ -151,7 +172,10 @@ def reserve_trial_room(items: list[str], tool_context: ToolContext) -> dict:
         sid, _, size = it.partition(":")
         g = db.get_garment(sid.strip())
         qty = (g or {}).get("stock", {}).get(store, {}).get(size.strip(), 0)
-        if not g or qty <= 0:
+        guard = _size_guard(tool_context, sid.strip(), size.strip(), shopper_chose_size) if g else None
+        if guard:
+            problems.append(guard)
+        elif not g or qty <= 0:
             problems.append(f"{it} is not in stock here")
         else:
             held.append({"style_id": g["style_id"], "name": g["name"], "size": size.strip()})
@@ -167,14 +191,30 @@ def reserve_trial_room(items: list[str], tool_context: ToolContext) -> dict:
         room = free[0] if free else STORES[store]["trial_rooms"][-1]
         tool_context.state["hold_room"] = room
     hold_id = db.add_hold(store, {"room": room, "items": held})
+    tool_context.state["held_items"] = held
     return {"status": "held", "store_id": store, "room": room, "hold_id": hold_id,
-            "items": held, "problems": problems}
+            "items": held, "problems": problems, "sizes_checked_by_fit_engine": not shopper_chose_size}
 
 
-def notify_staff(message: str, tool_context: ToolContext, room: Optional[str] = None) -> dict:
+def notify_staff(message: str, tool_context: ToolContext, room: Optional[str] = None,
+                 shopper_chose_size: bool = False) -> dict:
     """Send a task to store staff, e.g. "Bring Ivory Chikankari Kurta (Petite) size M to room 4".
-    Only call after the shopper agrees. Uses the shopper's held trial room if room is not given."""
+    Only call after the shopper agrees. Uses the shopper's held trial room if room is not given.
+    Sizes in the message must match get_fit_verdicts; set shopper_chose_size=true only if the shopper
+    explicitly asked for a different size."""
     store = _store(tool_context)
+    # Guardrail: check every "<garment name> ... size X" in the message against the fit engine.
+    low = message.lower()
+    for g in sorted(get_db().list_garments(), key=lambda x: -len(x["name"])):
+        i = low.find(g["name"].lower())
+        if i < 0:
+            continue
+        m = re.search(r"\bsize\s+([A-Za-z0-9]{1,4})\b", message[i + len(g["name"]):i + len(g["name"]) + 40], re.I)
+        if m:
+            guard = _size_guard(tool_context, g["style_id"], m.group(1), shopper_chose_size)
+            if guard:
+                return {"status": "blocked", "reason": guard}
+        low = low.replace(g["name"].lower(), " " * len(g["name"]))     # don't match a shorter name inside it
     room = room or tool_context.state.get("hold_room") or tool_context.state.get("qr_room") or "floor"
     task_id = get_db().add_task(store, {"room": room, "message": message})
     return {"status": "sent", "task_id": task_id, "store_id": store, "room": room}

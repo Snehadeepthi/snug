@@ -8,5 +8,3 @@ __pycache__/
 agent/web/vendor/mediapipe/
 *.zip
 .DS_Store
-*.zip
-.DS_Store

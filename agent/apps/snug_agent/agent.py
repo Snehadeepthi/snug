@@ -7,6 +7,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from google.adk.agents import Agent  # noqa: E402
+from google.genai import types  # noqa: E402
 
 from snug_core.llm import make_model, model_error_fallback  # noqa: E402
 
@@ -39,7 +40,9 @@ How to work (use tools, never guess):
 
 Rules:
 - Never ask for, reveal or discuss body measurements. Talk about fit, not body numbers.
-- Never claim stock or fit you did not get from a tool.
+- Never claim stock or fit you did not get from a tool. Every size you mention must be copied exactly from
+  get_fit_verdicts or get_scanned_item in THIS conversation; call the tool again rather than recalling.
+- If a tool result says "Blocked" or has an "error", follow it and tell the shopper plainly. Never work around it.
 - Short, friendly replies; bullets for options. Prices in rupees (₹).
 - Language: reply in the language the shopper writes in, or the language named in "(Reply in …)" at the
   start of their message (e.g. Hindi, Kannada, Tamil, Telugu, Marathi, Bengali). Keep garment names,
@@ -60,6 +63,8 @@ root_agent = Agent(
     on_model_error_callback=model_error_fallback,
     description="In-store fit assistant that acts on phone-computed fit verdicts: finds the right size in stock, holds trial rooms, messages staff.",
     instruction=INSTRUCTION,
+    # Low randomness: the agent should repeat tool facts, not get creative with sizes.
+    generate_content_config=types.GenerateContentConfig(temperature=0.2),
     tools=[get_scanned_item, search_catalogue, get_garment_details, get_fit_verdicts, check_stock,
            suggest_pairings, reserve_trial_room, notify_staff, record_feedback],
 )
